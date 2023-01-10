@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<title>표시컨설팅</title>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<link rel="stylesheet" href="../../../static/css/import.css"/>
+<script type="text/javascript" src="../../../static/js/jquery-1.10.1.min.js"></script>
+<script type="text/javascript" src="../../../static/js/jquery-ui.min.js"></script>
+<script type="text/javascript" src="../../../static/js/common.js"></script>
+</head>
+<body class="bg00">
+
+<div class="layer-pop-wrap">
+    <div class="layer-pop-box xlarge">
+        <div class="pop-wrap">
+            <h1 class="blind">HACCP > 컨설팅관리 > 신규 컨설팅 등록 팝업</h1>
+            <header class="pop-header">
+                <div class="pop-header-title-wrap">
+                    <h3 class="pop-header-title">컨설팅 수정</h3>
+                    <button class="btn-pop-close js-pop-close">닫기</button>
+                </div>
+            </header>
+            <div class="pop-container">
+                <div class="pop-common-box">
+                    <div class="form-info-wrap">
+                        <div class="form-info-box">
+                            <dl>
+                                <dd>
+                                    <div class="pop-search-form">
+                                        <label>고객사명</label>
+                                        <input type="text">
+                                        <button class="btn-search"><i></i>조회</button>
+                                    </div>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                    <div class="mgt30">
+                        <h3 class="content-title tooltip">컨설팅 의뢰 제품정보
+                            <span>?</span>
+                            <span class="tooltip-content"><p><i class="th-star">*</i> 는 필수값입니다.</p></span>
+                        </h3>                     
+                        
+                        <div class="tb-list tb-list_input narrow">
+                            <ul class="thead">
+                                <li>
+                                    <div style="width:3%;">No</div>
+                                    <div style="width:11%;">상품명</div>
+                                    <div style="width:7%;">상품코드</div>
+                                    <div style="width:11%;">접수(계약)일</div>
+                                    <div>식품유형</div>
+                                    <div style="width:7%;">계약MD</div>
+                                    <div style="width:8%;">계약금</div>
+                                    <div style="width:8%;">중도금</div>
+                                    <div style="width:8%;">잔금</div>
+                                    <div style="width:8%;">견적단가</div>
+                                    <div style="width:10%;"></div>
+                                </li>
+                            </ul>
+                            <ul class="tbody pdb0">
+                                <li>
+                                    <div style="width:3%;">1</div>
+                                    <div style="width:11%;"><input type="text" class="full" placeholder="상품명을 입력하세요"></div>
+                                    <div style="width:7%;"><input type="text" class="full txt-c" placeholder=""></div>
+                                    <div style="width:11%;"><span class="calendar-box single"><input type="text" class="calendarDate_start"></span></div>
+                                    <div>
+                                        <div class="goods-select-wrap">
+                                            <div><select class="full"><option>선택</option></select></div>
+                                            <div style="display:;"><!--select 선택시 해당 div를 hide/show 해주세요 -->
+                                                <ul class="mini-list mgt5">
+                                                    <li><span>발효용품</span><button class="btn-del-single">삭제</button></li>
+                                                    <li><span>축산품</span><button class="btn-del-single">삭제</button></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style="width:7%;"><input type="text" class="full txt-c" placeholder=""></div>
+                                    <div style="width:8%;" class="txt-r">2,000,000</div>
+                                    <div style="width:8%;" class="txt-r">3,000,000</div>
+                                    <div style="width:8%;" class="txt-r">2,000,000</div>
+                                    <div style="width:8%;" class="txt-r">7,000,000</div>
+                                    <div style="width:10%;" class="txt-l">
+                                        <div class="tb-btns-wrap"><button class="btn-del"><i>-</i><span>삭제</span></button></div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div style="width:3%;">2</div>
+                                    <div style="width:11%;"><input type="text" class="full" placeholder="상품명을 입력하세요"></div>
+                                    <div style="width:7%;"><input type="text" class="full txt-c" placeholder=""></div>
+                                    <div style="width:11%;"><span class="calendar-box single"><input type="text" class="calendarDate_start"></span></div>
+                                    <div><select class="full"><option></option></select></div>
+                                    <div style="width:7%;"><input type="text" class="full txt-c" placeholder=""></div>
+                                    <div style="width:8%;" class="txt-r"></div>
+                                    <div style="width:8%;" class="txt-r"></div>
+                                    <div style="width:8%;" class="txt-r"></div>
+                                    <div style="width:8%;" class="txt-r"></div>
+                                    <div style="width:10%;" class="txt-l">
+                                        <div class="tb-btns-wrap">
+                                            <button class="btn-del"><i>-</i><span>삭제</span></button>
+                                            <button class="btn-add"><i>+</i><span>추가</span></button>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li class="total">
+                                    <div>
+                                        <div>
+                                            <div class="file-upload-wrap">
+                                                <div class="file-upload">
+                                                    <input type="file" id="file_name" class="upload-hidden">
+                                                    <input class="upload-name" value="견적서 및 계약서 파일을 선택하여 등록해주세요" disabled="disabled">
+                                                    <label for="file_name"><i></i>파일첨부</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style="width:20%;" class="txt-r">견적 계</div>
+                                    <div style="width:10%;" class="txt-r total-txt">500,000</div>
+                                    <div style="width:10%;" class="txt-l"></div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="mgt30 clear">
+                        <div class="column col2eq">
+                            <h3 class="content-title">담당자</h3>
+                            <div>
+                                그리드 영역
+                            </div>
+                            <div class="mgt30">
+                                <h3 class="content-title">세금계산서 담당자 정보</h3>
+                                <table class="tb-view-01 narrow">
+                                    <colgroup><col width="30%"><col width=""></colgroup>
+                                    <tbody>
+                                        <tr>
+                                            <th>계산서 담당자명</th>
+                                            <td><input type="text" class="full" placeholder="세금계산서 담당자명을 입력하세요"></td>
+                                        </tr>
+                                        <tr>
+                                            <th>계산서 발행 이메일</th>
+                                            <td><input type="text" class="full" placeholder="세금계산서를 발행할 이메일 주소를 입력하세요"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="column col2eq pdl20">
+                            <div>
+                                <h3 class="content-title">세스코 담당자</h3>
+                                <div>
+                                    그리드 영역
+                                </div>
+                                <div class="mgt30">
+                                    <h3 class="content-title">첨부파일</h3>
+                                    <table class="tb-view-01 narrow">
+                                        <colgroup><col width="30%"><col width=""><col width="83px"></colgroup>
+                                        <tbody>
+                                            <tr>
+                                                <th><input type="text" class="full" placeholder="파일명"></th>
+                                                <td>
+                                                    <div class="file-upload-wrap">
+                                                        <div class="file-upload">
+                                                            <input type="file" id="file_name" class="upload-hidden">
+                                                            <input class="upload-name" disabled="disabled">
+                                                            <label for="file_name"><i></i>파일첨부</label>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="txt-l">
+                                                    <div class="tb-btns-wrap">
+                                                        <button class="btn-del"><i>-</i><span>삭제</span></button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th><input type="text" class="full" placeholder="파일명"></th>
+                                                <td>
+                                                    <div class="file-upload-wrap">
+                                                        <div class="file-upload">
+                                                            <input type="file" id="file_name" class="upload-hidden">
+                                                            <input class="upload-name" disabled="disabled">
+                                                            <label for="file_name"><i></i>파일첨부</label>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="txt-l">
+                                                    <div class="tb-btns-wrap">
+                                                        <button class="btn-del"><i>-</i><span>삭제</span></button>
+                                                        <button class="btn-add"><i>+</i><span>추가</span></button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pop-bottom">
+                <div class="pop-btn-box">
+                    <a href="" class="btn-pop-bottom">취소</a>
+                    <a href="" class="btn-pop-bottom">등록</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

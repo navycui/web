@@ -1,0 +1,265 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/comm_default}">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1 minimum-scale=1" />
+<script th:inline="javascript" type="text/javascript">
+var loginForgotPw
+$(document).ready(function(){
+	loginForgotPw = new Vue({
+		el: '#app',
+		data: {
+            userInfo:{ // 인증 정보
+                user_id:[[${session.userId}]],
+                send_nm:[[${session.userNm}]],
+                receive_nm:'', 
+                receive_email:'',
+                send_url:'',
+                send_text:'',  
+                status:'',   
+                cst_nm:'',   
+                prod_nm:'',
+                send_chat_st_nm:'',
+                send_tp_cd:'01',
+                rgstr_dt:'',
+                certNo:'',
+                mphone_no:'',
+            },
+            timeMachine:{ // 타이머 카운터 정보
+                minute:5,
+                seconds:0,
+                isok:false
+            },
+            checkYn:{
+                sendBtnYn:false,
+                conformBtn:false
+            },
+            certNoVal:0,
+            certNoInputDisabled:true,           // 인증번호 입력 활성화 여부
+            sendBtnDisabled:true,               // 발송 버튼 활성화 여부
+            sendBtnMobileNo:true,               // 휴대폰 인증번호 버튼 활성화 여부
+            conformBtnDisabled:true,            // 인증번호 확인 버튼 활성화 여부
+            sendConformBtnDisabled:false,       // 확인 버튼 활성화 여부
+		},
+		methods: {
+            sendEmail(e){ // 인증 번호 발송
+                e.preventDefault();
+                let _self = this;
+                let url = "/api/consulting/consult/sendMail";
+                // 발송 성공하면 certNo 활성화
+                let params = {
+                    receive_email:_self.userInfo.receive_email,
+                    sys_id:_self.userInfo.sys_id,
+                    send_tp_cd:'01',
+                    send_text:'비밀번호 초기화',
+                }
+
+                axiosCall('post', url, params, res =>{
+                    if (!!res.data) {
+                        sessionStorage.setItem("_CERT_NO_", res.data);
+                        cmmAlert("인증번호 발송되었습니다.")
+                    }
+                    _self.certNoInputDisabled = false
+                    _self.timeMachine.isok = true;
+                }, "");
+            },
+            sendMobile(e){ // 인증 번호 발송
+                e.preventDefault();
+                let _self = this;
+                let url = "/api/sendPhone";
+                // 발송 성공하면 certNo 활성화
+                let params = {
+                     send_phone:_self.userInfo.mphone_no
+                    ,dest_phone:_self.userInfo.mphone_no
+                    ,msg_body:  "세스코 인증번호:"
+                    ,subject:   "세스코 인증번호:"
+                }
+                axiosCall('post', url, params, res =>{
+                    if (!!res.data) {
+                        sessionStorage.setItem("_CERT_NO_", res.data);
+                        cmmAlert("인증번호 발송되었습니다.")
+                    }
+                    _self.certNoInputDisabled = false;
+                    _self.timeMachine.isok = true;
+                }, "");
+
+            },
+			conformCertNo(e){ // 인증 번호 확인
+                e.preventDefault();
+                let _self = this;
+                let certno = sessionStorage.getItem("_CERT_NO_");
+                if (certno === _self.userInfo.certNo) {
+                    loginForgotPw.$refs.sendFindPw.style.backgroundColor = "#498dfe";
+                    cmmAlert("인증 되었습니다.");
+                    window.location.href = "/user/loginForgotPwEnter/" + _self.userInfo.receive_email; // 찾기 화면이동
+                    sessionStorage.removeItem("_CERT_NO_")
+                } else {
+                    cmmAlert("인증 번호 맞지 않습니다.")
+                }
+                // 성공하면 
+            },
+            sendFindPw(e){ // 비밀번호 찾기 호출
+                e.preventDefault();
+                let _self = this;
+                if (!_self.sendConformBtnDisabled) {
+                    return;
+                }
+            },
+            focusTelNo(){
+                let teldom = document.getElementById("email")
+                teldom.focus()
+            },
+            focusSendBtn(){
+                let _self = this;
+                _self.sendEmail()
+            }
+		},
+        watch: {
+            timeMachine: { //타이머 카운터
+                deep: true,
+                handler(newVal) {
+                    let _self = this;
+                    if(this.timeMachine.isok){
+                        if (newVal.seconds > 0) {
+                            setTimeout(() => {
+                                _self.timeMachine.seconds--;
+                            }, 1000);
+                        }
+                        if (newVal.seconds === 0) {
+                            if (newVal.minute === 0) {
+                                cmmAlert("인증 시간 초과 하였습니다.인증 번호 다시 발송 하세요.")
+                                _self.userInfo.certNo = "";
+                                _self.timeMachine.minute = 5;
+                                _self.timeMachine.seconds = 0;
+                                _self.timeMachine.isok = false;
+                                _self.certNoInputDisabled = true
+                                _self.sendConformBtnDisabled = true
+                                loginForgotPw.$refs.sendFindPw.style.backgroundColor = "#c1c1c1";
+                                sessionStorage.removeItem("_CERT_NO_")
+                            } else {
+                                _self.timeMachine.minute--;
+                                _self.timeMachine.seconds = 59;
+                            }
+                        }
+                    }
+                },
+                immediate: true
+            },
+            userInfo:{
+                deep: true,
+                handler(newVal) {
+                    if(!!newVal.receive_email){
+                        this.sendBtnDisabled = false
+                    } else {
+                        this.sendBtnDisabled = true
+                    }
+                    if(!!newVal.mphone_no){
+                        this.sendBtnMobileNo = false
+                    } else {
+                        this.sendBtnMobileNo = true
+                    }
+                    if(!!newVal.certNo){
+                        this.conformBtnDisabled = false
+                    } else {
+                        this.conformBtnDisabled = true
+                    }
+                }
+            }
+        }
+	})
+});
+</script>
+
+</head>
+<body>
+	<section layout:fragment="content" id="app"  v-cloak>
+		<div class="page-head">
+            <!-- content -->
+            <div class="page-content">
+                <div class="sub_title">
+                    <div class="section_inner">
+                        <h2>비밀번호 찾기</h2>
+                        <span>시스템에 가입된 비밀번호 찾기를 진행합니다.</span>
+                    </div>
+                </div>
+                <div id="lay_find" class="page_find">
+                    <div class="section_inner">
+                        <div id="typeC" class="tab_con">
+                            <div class="txt_box">
+                                <b>이메일 입력해 주세요.</b>
+                            </div>
+                            <!-- 비밀번호찾기 폼 -->
+                            <form action="">
+                                <fieldset>
+                                    <legend>비밀번호찾기 폼</legend>
+                                    <div class="form_con">
+                                        <div class="box">
+                                            <h4>이메일</h4>
+                                            <div class="input_wrap">
+                                                <div class="input_box">
+                                                    <div class="flex-auto-end">
+                                                        <div>
+                                                            <input type="text" 
+                                                                id="email"  
+                                                                name="email" 
+                                                                v-model="userInfo.receive_email"  
+                                                                v-on:keyup.enter="focusSendBtn">
+                                                        </div>
+                                                        <div><button class="btn-find mgl5" @click="sendEmail" :disabled="sendBtnDisabled" >인증메일 발송</button></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- <div class="box2">또는</div>
+                                        <div class="box">
+                                            <h4>휴대전화번호</h4>
+                                            <div class="input_wrap">
+                                                <div class="input_box">
+                                                    <div class="flex-auto-end">
+                                                        <div>
+                                                            <input type="text" id="mphone_no" name="mphone_no" 
+                                                                v-model="userInfo.mphone_no" 
+                                                                autofocus 
+                                                                v-on:keyup.enter="focusTelNo" 
+                                                                placeholder="- 없이 입력하세요.">
+                                                        </div>
+                                                        <div><button class="btn-find mgl5" @click="sendMobile" :disabled="sendBtnMobileNo">인증번호 발송</button></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div> -->
+                                        <div class="box">
+                                            <h4>인증번호 입력</h4>
+                                            <div class="input_wrap">
+                                                <div class="input_box">
+                                                    <div class="flex-auto-end">
+                                                        <div class="input_cert_box">
+                                                            <input type="text" id="certNo" name="certNo" v-model="userInfo.certNo" :disabled="certNoInputDisabled">
+                                                            <span class="time">{{timeMachine.minute}}:{{timeMachine.seconds < 10 ? ('0' + timeMachine.seconds) : timeMachine.seconds}}</span>
+                                                        </div>
+                                                        <div><button class="btn-find mgl5" @click="conformCertNo" :disabled="conformBtnDisabled">인증번호 확인</button></div>
+                                                    </div>
+                                                </div>
+                                                <ul class="list_txt">
+                                                    <li>이메일로 발송된 인증번호를 입력하여 주시기 바랍니다.</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        <div class="pop-btn-box">
+                                            <a href="/user/login" class="btn-pop-bottom">취소</a>
+                                            <a href="#" class="btn-pop-bottom" ref="sendFindPw" @click="sendFindPw" style="background-color:#c1c1c1" >확인</a>
+                                        </div>
+                                    </div>
+                                </fieldset>
+                            </form>
+                            <!-- //비밀번호찾기 폼 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- //content -->
+		</div>
+	</section>
+</body>
+</html>

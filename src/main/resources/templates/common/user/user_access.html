@@ -1,0 +1,75 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/comm_default}">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1 minimum-scale=1" />
+<script th:inline="javascript" type="text/javascript">
+  var loginFindIdResult
+  $(document).ready(function(){
+    loginFindIdResult = new Vue({
+      el: '#app',
+      data: {
+        userInfo:[[${userInfo}]]
+    },
+    mounted() {
+        
+        if (!!this.userInfo) {
+            this.maskingName(this.userInfo)
+        }
+    },
+      methods: {
+        maskingName(val){
+            let _self = this;
+            let box = val.split("@")[0].replace(/(?<=.{2})./gi,'*');
+            let box2 = [...val.split("@")[1].slice(0,val.split("@")[1].indexOf("."))]
+            let box3 = "";
+            let box4 = val.split("@")[1].slice(val.split("@")[1].indexOf("."))
+            box2.forEach((el,index)=>{
+
+                if (index == 0 || index == (box2.length-1)) {
+                    box3 += el;
+                } else {
+                    box3 += "*";
+                }
+            })
+            _self.userInfo =  box + "@" + box3 + box4;
+        }
+      },
+    })
+  });
+</script>
+</head>
+<body>
+	<section class="wrap" layout:fragment="content" id="app"  v-cloak>
+		<div class="page-head">
+            <!-- content -->
+            <div class="page-content">
+                <div class="sub_title">
+                    <div class="section_inner">
+                        <h2>아이디 찾기</h2>
+                        <span>시스템에 가입된 아이디 찾기를 진행합니다.</span>
+                    </div>
+                </div>
+                <div id="lay_find" class="page_find">
+                    <div class="section_inner">
+                        <div id="typeC" class="tab_con">
+                            <div class="txt_box">
+                                <b>가입하신 아이디는 <strong><span id="result">{{userInfo}}</span></strong>입니다.</b>
+                            </div>
+                            <ul class="list_txt">
+                                <li>개인정보보호를 위해 개인정보의 일부는 *로 표시하였습니다.</li>
+                            </ul>
+                            <div class="pop-btn-box">
+                                <a href="/user/loginForgotPw" class="btn-pop-bottom">비밀번호 찾기</a>
+                                <a href="/user/login" class="btn-pop-bottom">로그인하기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- //content -->
+		</div>
+    </section>
+</body>
+</html>

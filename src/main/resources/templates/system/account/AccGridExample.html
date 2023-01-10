@@ -1,0 +1,709 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/default}">
+<head>
+<title>표시컨설팅</title>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1 minimum-scale=1" />
+<script type="text/javascript">
+	Vue.component('selectBox', {
+
+		template: '<select class="full">{{options}}</select>',
+		data : {
+			options : []
+		},
+		mounted: function(){
+			// console.log(1);
+			// var option = $("<option>1</option>");
+			// this.options.push(option);
+			//self.append(option);
+		},
+		methods: {
+			
+		}
+
+	});
+
+</script>
+<script type="text/javascript">
+	// data piker from start
+    Vue.component('datePickerFrom', {
+        template: '<input type="text" class="calendarDate_start" readonly/>',
+        mounted: function() {
+            var self = this;
+            $(this.$el).datepicker({
+                dateFormat: "yy-mm-dd",
+                onSelect: function(date){
+                    self.$emit('update-date', date)
+                },
+//          ,minDate: new Date(),
+                monthNames: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
+                monthNamesShort: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
+                dayNames: ['일', '월', '화', '수', '목', '금', '토'],
+                dayNamesShort: ['일', '월', '화', '수', '목', '금', '토'],
+                dayNamesMin: ['일', '월', '화', '수', '목', '금', '토'],
+                showMonthAfterYear: true,
+                yearSuffix: '',
+                showOtherMonths: true,
+                selectOtherMonths: true,
+                closeText: '닫기',
+                prevText: '이전',
+                nextText: '다음',
+                currentText: '이번달',
+                isRTL: false,
+                firstDay: 0,
+                weekHeader: 'Wk',
+                showOn: "both",
+                buttonImageOnly:true,
+                changeMonth: true,
+                changeYear: true,
+                yearRange: 'c-99:c+99',
+                showButtonPanel: true,
+                buttonImage:'/images/common/calendar_btn.png'
+            });
+            
+            //if(this.$el.id == 'startDate_txt' ){
+            //    this.$el.value = moment().format('YYYY-MM-DD')
+            //}
+            //if(this.$el.id == 'endDate_txt' ){
+            //    this.$el.value = moment().format('YYYY-MM-DD')
+            //}
+        }
+
+        ,beforeDestroy: function(){
+            $(this.$el).datepicker('hide').datepicker('destroy')
+        }
+        , methods: {
+            currentDate : function() {
+                return moment().format('YYYY-MM-DD')
+            },
+            yyyy : function(value){
+                return moment(value,'YYYY').format('YYYY\년');
+            }
+        }
+    });
+
+    // data piker to end
+    Vue.component('datePickerTo', {
+        template: '<input type="text" class="calendarDate_end" readonly/>',
+        mounted: function() {
+            var self = this;
+            $(this.$el).datepicker({
+                dateFormat: "yy-mm-dd",
+                onSelect: function(date){
+                    self.$emit('update-date', date)
+                },
+//          ,minDate: new Date(),
+                monthNames: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
+                monthNamesShort: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
+                dayNames: ['일', '월', '화', '수', '목', '금', '토'],
+                dayNamesShort: ['일', '월', '화', '수', '목', '금', '토'],
+                dayNamesMin: ['일', '월', '화', '수', '목', '금', '토'],
+                showMonthAfterYear: true,
+                yearSuffix: '',
+                showOtherMonths: true,
+                selectOtherMonths: true,
+                closeText: '닫기',
+                prevText: '이전',
+                nextText: '다음',
+                currentText: '이번달',
+                isRTL: false,
+                firstDay: 0,
+                weekHeader: 'Wk',
+                showOn: "both",
+                buttonImageOnly:true,
+                changeMonth: true,
+                changeYear: true,
+                yearRange: 'c-99:c+99',
+                showButtonPanel: true,
+                buttonImage:'/images/common/calendar_btn.png'
+            });
+            
+            //if(this.$el.id == 'startDate_txt' ){
+            //    this.$el.value = moment().format('YYYY-MM-DD')
+            //}
+            //if(this.$el.id == 'endDate_txt' ){
+            //    this.$el.value = moment().format('YYYY-MM-DD')
+            //}
+        }
+
+        ,beforeDestroy: function(){
+            $(this.$el).datepicker('hide').datepicker('destroy')
+        }
+        , methods: {
+            currentDate : function() {
+                return moment().format('YYYY-MM-DD')
+            },
+            yyyy : function(value){
+                return moment(value,'YYYY').format('YYYY\년');
+            }
+        }
+    });
+
+
+	// 컨설팅관리 목록 - 담당자 팝업
+	// popView('/operator/consult/indicationCoslChgPop')
+	Vue.component('cusMgtCusRegPop', {
+        template: `
+		<div class="layer-pop-wrap">
+			<div class="layer-pop-box midium">
+				<div class="pop-wrap">
+					<h1 class="blind">담당자 조회</h1>
+					<header class="pop-header">
+						<div class="pop-header-title-wrap">
+							<h3 class="pop-header-title">담당자</h3>
+							<button class="btn-pop-close js-pop-close" @click="onEmit">닫기</button>
+						</div>
+					</header>
+					<div class="pop-container">
+						<div class="pop-common-box">
+							<table class="tb-view-01">
+								<colgroup><col width="30%"><col width=""></colgroup>
+								<tbody>
+									<tr>
+										<th>담당자명</th>
+										<td>{{managerinfo.user_nm}}</td>
+									</tr>
+									<tr>
+										<th>연락처</th>
+										<td>{{managerinfo.tel_no}}</td>
+									</tr>
+									<tr>
+										<th>아이디</th>
+										<td>{{managerinfo.user_id}}</td>
+									</tr>
+									<tr>
+										<th>이메일</th>
+										<td>{{managerinfo.email}}</td>
+									</tr>
+									<tr>
+										<th>고객사</th>
+										<td>{{managerinfo.cst_nm}}</td>
+									</tr>
+									<tr>
+										<th>사업장</th>
+										<td>{{managerinfo.cst_nm}}</td>
+									</tr>
+									<tr>
+										<th>진행중인 컨설팅 수</th>
+										<td>4</td>
+									</tr>
+									<tr>
+										<th>등록일시</th>
+										<td>{{managerinfo.rgstr_dt}}</td>
+									</tr>
+									<tr>
+										<th>최근 로그인 일시</th>
+										<td>{{managerinfo.mdfr_dt}}</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+        `,
+        props: [
+			'open', 'managerinfo'
+		],
+        data() {
+            return {
+                currentWord: this.startWord,
+                answerText:'',
+                msg:''
+            }
+        },
+        methods: {
+            onEmit(e) {
+                let _this = this;
+                e.preventDefault();
+                // 자식 값 전달
+                _this.$emit("on-change-open",false)
+            }
+        },
+        mounted: function (){
+            if (this.$props.showpop) {
+                $("#pop").show()
+            } else {
+                $("#pop").hide()
+            }
+            console.log('mounted');
+        },
+    })
+
+var vue
+
+$(document).ready(function(){
+	vue = new Vue({
+		el: '#app',	
+		
+		data: {
+			codeList : [],	// 공통 코드 
+			open: false,
+			managerinfo : [],
+			testmsg : ''
+		},
+		mounted() {
+			
+			//this.consultGrid();			
+
+			this.getGride();			
+
+		},
+		methods: {
+			async getGride(){
+
+				// 공통 코드 목록
+				let reqCodedata = [					
+					{ sys_cd : 'FS', cmm_cd : 'FS001'}	// 식품유형
+				]
+
+				this.commCode(reqCodedata);
+				
+			},
+			setCodeList : function(selBoxId, param){
+
+				let _this = this;
+
+				axios.post('/operator/json/commDtlCodeAllList', JSON.stringify(param), 
+				{	
+					headers:{
+						'AJAX': true,
+						'Content-Type': 'application/json'
+					}
+				}).then(function (response) {
+
+					_this.codeList = response.data;
+					_this.consultGrid();
+					
+				}).catch(function (error) {
+					console.log(error);
+				});
+
+			},
+
+			onChangeOpen: function(val) {
+                    //console.log(val);
+
+					let _this = this;
+
+					//let param = { user_id : val }	
+					// 임시 강제 설정
+					let param = { user_id : 'softdol' }	
+
+					console.log(_this.open);
+
+					if(!_this.open){
+
+						axios.post('/operator/json/getmanagerinfo', param
+						).then(function (response) {
+							
+							_this.open = val;
+							_this.managerinfo = response.data;
+							
+						}).catch(function (error) {
+							console.log(error);
+						});
+
+					}else{
+						_this.open = false;
+					}
+                    
+            },
+
+			// 공통 code 가져오기
+			commCode : function(param) {
+
+				let _this = this;
+
+				axios.post('/api/commDtlCodeAllList', JSON.stringify(param), 
+				{	
+					headers:{
+						'AJAX': true,
+						'Content-Type': 'application/json'
+					}
+				}).then(function (response) {
+
+					_this.codeList = response.data;
+					_this.consultGrid();
+					
+				}).catch(function (error) {
+					console.log(error);
+				});
+
+			},
+
+			// 표시 컨설팅 (페이징)
+			consultGrid : function() {
+				
+				// param 전송값 (list 형식)
+				let reqParam = [];
+				let _this = this;
+
+				axios.post('/acc/api/consultlist', JSON.stringify(reqParam), 
+				{	
+					headers:{
+						'AJAX': true,
+						'Content-Type': 'application/json'
+					}
+				})
+				.then(function (response) {
+					
+					let data = response.data;
+
+					// console.log(data);
+
+					// HTML 파일에 div의 id로 입력해놓은 jqxgrid에 dataAdapter의 정보를  
+					// grid 형태로 출력한다. 
+					let commCodeAdapter = []
+
+					// console.log('this.codeList : ' + codeList);
+
+					_this.codeList.forEach(codeSubList => {
+						// console.log("--------------------");
+						console.log(codeSubList);
+
+						let commCodeSource = {
+							datatype: "array",
+							datafields: [
+								{ name: 'cmm_dtl_nm', type: 'string' },
+								{ name: 'cmm_dtl_cd', type: 'string' }
+							],
+							localdata: codeSubList.dtlCodeList
+						};
+						
+						commCodeAdapter.push(new $.jqx.dataAdapter(commCodeSource, {autoBind: true}));
+					});
+
+					console.log('data => ' + data);
+
+					// 데이터 타입, 필드, 셋팅할 데이터를 설정한다.  
+					let source =  {  
+						datatype: "json", // json 형태의 데이터를 셋팅할 것이고.  
+						
+						// 각필드의 이름과 타입은 datafields에 마찬가지로 json 형태이다.  
+						datafields: [
+							{ name: 'fs_no', type: 'string'},
+							{ name: 'fs_seq', type: 'int'},
+							{ name: 'cst_id', type: 'string'},
+							{ name: 'receive_date',type: 'date'},
+							{ name: 'issue_date',type: 'date'},
+							{ name: 'close_date',type: 'date'},
+							{ name: 'bill_cst_id', type: 'string'},
+							{ name: 'fs_mng_id', type: 'string'},
+							{ name: 'fs_bill_yn', type: 'string'},
+							{ name: 'prod_nm', type: 'string'},
+							{ name: 'prod_tp_cd', type: 'string'},
+							{ name: 'prod_item', type: 'string'},
+							{ name: 'prod_mafa_nm', type: 'string'},
+							{ name: 'prod_ser_cd', type: 'string'},
+							{ name: 'prod_qty', type: 'string'},
+							{ name: 'prod_unit_cd', type: 'string'},
+							{ name: 'prod_amt', type: 'int'},
+							{ name: 'status', type: 'string'},
+							{ name: 'rgstr_id', type: 'string'},
+							{ name: 'rgstr_dt',type: 'string'},
+							{ name: 'mdfr_id', type: 'string'},
+							{ name: 'mdfr_dt',type: 'string'},
+
+							// 공통 코드 관련 추가
+							{ name: 'code1', value: 'prod_tp_cd', values: { source: commCodeAdapter[0].records, value: 'cmm_dtl_cd', name: 'cmm_dtl_nm' } }
+							// { name: 'code2', value: 'cmm_dtl_cd', values: { source: commCodeAdapter[1].records, value: 'cmm_dtl_cd', name: 'cmm_dtl_nm' }},
+							// { name: 'code3', value: 'cmm_dtl_cd', values: { source: commCodeAdapter[2].records, value: 'cmm_dtl_cd', name: 'cmm_dtl_nm' }},							
+						],
+						localdata: data // 위에서 셋팅해놓은 data를 localdata에 담아준다.  
+					};
+
+					console.log('source => ' + source);
+
+					// jqxgrid 프레임워크에서 만든 dataAdapter object를 생성하여  
+					// 위에서 셋팅한 source의 정보를 넣어준다.  
+					let dataAdapter = new $.jqx.dataAdapter(source);  
+					
+					console.log('dataAdapter => ' + dataAdapter);
+
+					$("#consultGrid").jqxGrid({  
+						width: '100%', //너비설정
+						autoheight: true, //높이설정(자동)
+						source: dataAdapter, // 데이터 연결
+						sortable: true, // 정렬 여부
+						enabletooltips: true,   // 설명레이어
+						theme: 'energyblue', // 테마 설정
+						pageable: true, // 페이징
+						pagermode: 'simple',    //페이징 타입
+						editable: true, // 수정가능
+						columns: [							
+							{ text: 'No', editable: false},
+							{ text: '컨설팅번호', datafield: 'fs_no', editable: false },
+							{ text: '고객사', datafield: 'cst_id', editable: false },
+							{ text: '제품명', datafield: 'prod_nm', editable: false },							
+							// 공통 코드 구현													
+							{
+								text: '식품유형1', datafield: 'code1', width: 100, columntype: 'dropdownlist',
+								createeditor: function (row, value, editor) {
+									editor.jqxDropDownList({ source: commCodeAdapter[0], displayMember: 'cmm_dtl_nm', valueMember: 'cmm_dtl_cd' });
+								}
+							},
+							{ text: '담당자', datafield: 'bill_cst_id', editable: false },
+							{ text: '접수일시/의뢰일시', datafield: 'rgstr_dt', editable: false },
+							{ text: '비용', datafield: 'fs_bill_yn', editable: false },
+							{ text: '세스코담당자', datafield: 'mdfr_id', editable: false },
+							{ text: '최종처리일시', datafield: 'mdfr_dt', editable: false }							
+						]
+					});
+
+					//$("#grid").jqxGrid('autoresizecolumns');  필드 크기 자동 설정
+
+					// events(click)
+					$("#consultGrid").on('cellclick', function (event) {
+						var args = event.args;
+						//console.log(args.value);
+						console.log(args.datafield);
+						switch (args.datafield){
+							case 'mdfr_id' : 
+								//alert('담당자 팝업');
+								_this.onChangeOpen(args.value);
+								break;
+							case "title" :
+								//location.href="/operator/board/noticeDetails";
+								break;
+							default:
+								break;
+						}
+					});
+
+				})
+				.catch(function (error) {
+					console.log(error);
+				});
+
+			},
+		}
+	})
+});
+</script>
+
+</head>
+<body>
+	<section layout:fragment="content" id="app"  v-cloak>
+		<div class="page-head">			
+			<!-- content -->
+			<select-box id="cs" name="cs" v-model="cs">
+			</select-box>
+			<div class="page-content flex-layout pdb0">
+				<div class="page-box">
+					<div class="clear">
+						<h2 class="page-title fl">표시컨설팅</h2>
+						<select class="select-top fl mgl60"><option>진행단계</option></select>
+						<div class="fr">
+							<button class="btn-search"><i></i>조회</button>
+						</div>
+					</div>
+					<hr>
+					<div class="board-search mgt20">
+						<table>
+							<colgroup>
+								<col width="50px"><col width="25%"><col width="10%"><col width="">
+								<col width="10%"><col width=""><col width="10%"><col width="">
+							</colgroup>
+							<tbody>
+								<tr>
+									<th rowspan="2" class="valign-b th-pd">기간</th>
+									<td rowspan="2" class="valign-b">
+										<div class="mini-btns">
+											<button>당월</button>
+											<button>당해</button>
+											<button>1개월</button>
+											<button>3개월</button>
+											<button>6개월</button>
+											<button>1년</button>
+										</div>
+										<div class="calendar-wrap mgt5">
+											<!--
+											<input type="text" class="calendarDate_start">
+											-->
+											<span class="calendar-box">
+												<date-picker-from name="requestSvSmDate" type="text" id="requestSvSmDate" size="12" title="서비스/장비설치 요청일" v-model="requestSvSmDate" /><label for="requestSvSmDate"></label>
+											</span>
+											<span class="dash">~</span>
+											<!--
+											<input name="" type="text" class="calendarDate_end"></span>
+											-->
+											<span class="calendar-box">
+												<date-picker-to name="requestSvEmDate" type="text" id="requestSvEmDate" size="12" title="서비스/장비설치 요청일" v-model="requestSvEmDate" /><label for="requestSvEmDate"></label>
+											</span>
+										</div>
+									</td>
+									<th>고객사</th>
+									<td><select class="full"><option></option></select></td>
+									<th>식품유형</th>
+									<td><select class="full"><option></option></select></td>
+									<th></th>
+									<td></td>
+								</tr>
+								<tr>
+									<th>제품명</th>
+									<td><input type="text" class="full"></td>
+									<th>담당자</th>
+									<td><select class="full"><option></option></select></td>
+									<th>세스코담당자</th>
+									<td><select class="full"><option></option></select></td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+				<div class="page-box last">
+					<div class="pin-layout">
+						<div class="clear">
+							<div class="fl"><h3 class="content-title">진행중인 표시컨설팅</h3></div>
+							<div class="fr">
+								<button class="btn-save">+ 신규컨설팅의뢰</button>
+								<button class="btn-save">x 컨설팅 의뢰취소</button>
+							</div>
+						</div>
+						<div class="pin-layout-wrap">
+							<button class="btn-tree-menu">트리메뉴</button>
+							<section class="tree-wrap">
+								<div class="tree-header">
+									<h5>고객사</h5>
+									<label class="tree-pin">
+										<input type="checkbox">
+										<span class="ico"></span>
+									</label>
+								</div>
+								<div class="tree-content">
+									<h6>즐겨찾기</h6>
+									<ul class="tree-bookmark">
+										<li><a href="#"><i></i>CJ제일제당</a></li>
+										<li><a href="#"><i></i>CJ푸드빌</a></li>
+										<li><a href="#"><i></i>쿠팡</a></li>
+									</ul>
+									<div class="tree-menu-list">
+										<h6>고객사</h6>
+										<ul class="tree-1depth">
+											<li><a href="#"><i></i>CJ</a></li>
+											<li><a href="#"><i></i>CJ제일제당</a></li>
+											<li><a href="#"><i></i>CJ푸드빌</a></li>
+											<li><a href="#"><i></i>쿠팡</a></li>
+											<li><a href="#"><i></i>롯데쇼핑</a>
+												<ul class="tree-2depth">
+													<li><a href="#"><i></i>우등지팜(협)</a></li>
+													<li><a href="#"><i></i>우등지팜(협)</a></li>
+												</ul>
+											</li>
+											<li><a href="#"><i></i>Kurly's</a>
+												<ul class="tree-2depth">
+													<li><a href="#"><i></i>우등지팜(협)</a></li>
+												</ul>
+											</li>
+										</ul>
+									</div>
+								</div>
+							</section>
+							<section class="tree-right-wrap">
+								<!-- 컨설팅 목록 => 그리드로 대체
+								<div class="tb-list">
+									<ul class="thead">
+										<li>
+											<div style="width:8%;">No</div>
+											<div>컨설팅번호 / 고객사</div>
+											<div>제품명/식품유형</div>
+											<div style="width:10%;">담당자</div>
+											<div style="width:13%;">접수일시/의뢰일시</div>
+											<div style="width:5%;">비용</div>
+											<div>세스코담당자</div>
+											<div style="width:13%;">최종처리일시</div>
+										</li>
+									</ul>
+									<ul class="tbody">
+										<li>
+											<div style="width:8%;">
+												<label class="check">
+													<input type="checkbox">
+													<span class="ico"></span>
+													<span class="txt">1</span>
+												</label>
+											</div>
+											<div class="txt-l">
+												<div class="col-consultant">
+													<span class="tag-circle">신규</span>
+													<span>CJ제일제당</span><br><a href="/operator/consult/indicationCoslChatWindow" class="a-link">C2022060600001-1</a>
+												</div>
+											</div>
+											<div>설탕/발효식품</div>
+											<div style="width:10%;">고객담당1</div>
+											<div style="width:13%;">2022-01-05 11:00:14</div>
+											<div style="width:5%;">Y</div>
+											<div class="txt-l"><a href="#" @click="popView('/operator/consult/indicationCoslChgPop')" class="a-line">김세스코</a><br><span class="tag blue">1차 검토중</span><span class="tag">참여자수 5</span></div>
+											<div style="width:13%;">2022-01-05 11:00:14</div>
+										</li>
+										<li>
+											<div style="width:8%;">
+												<label class="check">
+													<input type="checkbox">
+													<span class="ico"></span>
+													<span class="txt">2</span>
+												</label>
+											</div>
+											<div class="txt-l">
+												<div class="col-consultant">
+													<span class="tag-circle">신규</span>
+													<span>CJ제일제당</span><br><a href="/operator/consult/indicationCoslChatWindow" class="a-link">C2022060600001-1</a>
+												</div>
+											</div>
+											<div>설탕/발효식품</div>
+											<div style="width:10%;">고객담당1</div>
+											<div style="width:13%;">2022-01-05 11:00:14</div>
+											<div style="width:5%;">Y</div>
+											<div class="txt-l"><a href="#" @click="popView('/operator/consult/indicationCoslChgPop')" class="a-line">김세스코</a><br><span class="tag blue">검토보류(서류미비)</span><span class="tag">참여자수 5</span></div>
+											<div style="width:13%;">2022-01-05 11:00:14</div>
+										</li>
+									</ul>
+								</div>
+								-->
+								<button @click="onChangeOpen('userid')">테스트</button>
+								<div id='jqxWidget'>
+									<div id="consultGrid"></div>
+								</div>
+								<hr>
+								<!-- 페이징 => 그리드로 대체
+								<div class="clear mgt10">
+									<div class="fr">
+										<div class="paging-wrap">
+											<div class="paging">
+												<a class="first" title="이전 끝으로 이동" href="#">이전 끝으로 이동</a>
+												<a class="prev" title="이전 10 페이지 전으로 이동" href="#">이전 10 페이지 전으로 이동</a>
+												<a class="page-on" href="#">1</a>
+												<a href="#">2</a>
+												<a href="#">3</a>
+												<a href="#">4</a>
+												<a href="#">5</a>
+												<a class="next" title="다음 10 페이지 후로 이동" href="#">다음 10 페이지 후로 이동</a>
+												<a class="last" title="다음 끝으로 이동" href="#">다음 끝으로 이동</a>
+											</div>
+											<select class="paging-select"><option>10개씩 보기</option></select>
+										</div>
+									</div>
+								</div>
+								-->
+							</section>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- //content -->
+			<cus-mgt-cus-reg-pop 
+				v-if="open"  
+				:open="open"  
+				:managerInfo="managerinfo" 
+				:testmsg="testmsg" 
+				@on-change-open="onChangeOpen"
+				style="z-index: 100;">
+			</cus-mgt-cus-reg-pop>
+		</div>
+	</section>	    
+</div>
+</body>
+</html>

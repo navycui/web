@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<title>세스코</title>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<link rel="stylesheet" href="../../../static/css/import.css"/>
+<script type="text/javascript" src="../../../static/js/jquery-1.10.1.min.js"></script>
+<script type="text/javascript" src="../../../static/js/jquery-ui.min.js"></script>
+<script type="text/javascript" src="../../../static/js/common.js"></script>
+
+<script th:inline="javascript" type="text/javascript">
+var vue
+$(document).ready(function(){
+	vue = new Vue({
+		el: '#app',
+		data: {
+			sysId: [[${session.sysCode}]],
+			userId: [[${session.userId}]],
+			userTpCd: [[${session.userTpCd}]],
+			cstcd: [[${session.cstcd}]],
+
+			regPop: false,
+			editPop: false,
+
+			startDate: '',
+			endDate: '',
+
+			srchCstId: '',
+			srchMngId: '',
+			yn: '',
+
+			codeList01: [], //공통코드 List
+			cstList: [],    //고객사 list
+			mngList: [],    //담당자 List
+			ynList: [],     //yn List
+
+			calculateList: [],
+		},
+
+/*  // 첫번째로, mounted에서 datepicker 날짜 바인딩 시켜주기 ~~ 
+        mounted(){
+        let _this = this;
+        let param = [{sys_cd:'FS', cmm_cd:'FS013', arr_nm:'sysCateList'}, {sys_cd:'FS', cmm_cd:'FS008', arr_nm:'cusTypeList'}];
+        getCodeListForArrNm(param, _this);
+
+        _this.drawGrid();
+        },
+*/
+
+		methods: {
+			closeRegPop: function(val) {
+                this.regPop = val;
+            },
+            openRegPop: function(val) {
+                this.regPop = val
+            },
+			closeEditPop: function(val) {
+                this.editPop = val;
+            },
+            openEditPop: function(val) {
+                this.editPop = val
+            },
+
+
+			onChangeStartDate: function(val) {
+				this.startDate = val;
+			},
+			onChangeEndDate: function(val) {
+				this.endDate = val;
+			},
+
+
+			setPeriod: function(val) {
+				var periodDate = getPeriod(val);
+				this.startDate = periodDate.startDt;
+				this.endDate = periodDate.endDt;
+			},
+
+            /*// 선택 데이터 가져오기
+            selectedRow: function(){
+
+            let idxs = $('#jqxGrid').jqxGrid('getselectedrowindexes');
+            let data = [];
+            if(idxs.length > 0) {
+
+                let rowIDs = new Array();
+                let updateChk = false;
+                $(idxs).each(function(index, item) {
+                    let rowdata = $('#jqxGrid').jqxGrid('getrowdata', item);
+                    data.push(rowdata);                            
+                });
+
+                $('#jqxGrid').jqxGrid('clearselection');
+            }else{
+                alert('항목을 선택해 주세요.');
+            }
+            return data;
+            },
+            */
+
+
+			getCalculateList: function() {
+				let url = '/api/calculate/getCalculateList';
+				let _this = this;
+				let msg = '';
+				let param = {};
+				param.sys_id = _this.sysId;
+				param.srch_start_date = _this.startDate.replaceAll('-', '');
+				param.srch_end_date = _this.endDate.replaceAll('-', '');
+
+				axiosCall('get', url, param, function(res){
+					_this.noticeList = res.data;
+					_this.drawTable();
+				}, msg);
+			},
+
+            /*  ** Search돌릴 때 if return문 ~ 
+            // 고객사 정보 저장
+            uptCusInfo: function(){
+
+            let _this = this;
+
+            // 등록 정보 확인
+            if(_this.selCusInfo.cst_nm.trim() === ''){
+                alert('고객사명을 입력해 주세요.');
+                _this.$refs.cst_nm.focus();
+                return false;
+            }
+            if(_this.selCusInfo.cst_email.trim() !== '' && !emailCheck(_this.selCusInfo.cst_email)){
+                alert('이메일 형식이 정확하지 않습니다.\n예시) ex@cesco.co.kr');
+                _this.$refs.cst_email.focus();
+                return false;
+            }
+            // 고객사 정보 등록_수정                    
+            let setConfirmMsg = "등록";
+            let axiosUrl = '/cus/api/cusInfoIns';
+            let axiosMethod = 'post';
+            if(_this.chkCusUpt){
+                setConfirmMsg = "수정";
+                axiosUrl = "/cus/api/cusInfoUpt";
+                axiosMethod = 'put';                        
+            }
+            if(confirm("고객사 정보를 " + setConfirmMsg + " 하시겠습니까?")){
+
+                axiosCall(axiosMethod, axiosUrl, _this.selCusInfo, function(response) {
+                    console.log(setConfirmMsg);
+                    alert(response.data);
+                    _this.drawGrid();
+                    _this.insCusInfo();
+                });
+            }
+            },
+            */
+
+
+
+			drawTable: function() {
+				let _this = this;
+
+                let param = { 
+                        // cst_id : _this.search_cst_id,
+                        // cst_nm : _this.search_cst_nm,
+                        // cst_biz_no : _this.search_cst_biz_no,
+                        // status : _this.search_status
+
+                        // 기간 from ~ to : startDate, endDate
+                        // 고객사 : customer
+                        // 상품명 
+                        // 진행단계
+
+
+                    };
+				
+				var dataAdapter = new $.jqx.dataAdapter(source);  
+
+				$("#calculateGrid").jqxGrid({  
+					width: '100%',
+					// height: '400',
+					autoheight: true, //높이설정(자동)
+                    // autorowheight: true,
+					source: notiDataAdapter,    //위에서 만든 dataAdapter
+					sortable: true,
+					filterable: true,
+					columnsresize: true,        //column의 너비를 컨텐츠에 맞게 리사이징
+					pageable: true,
+					pagermode: 'simple',
+					showrowlines: false,
+                    showcolumnlines: false,
+					selectionmode: 'checkbox',
+
+					ready: function() {
+						$("#calculateGrid").find('.jqx-grid-column-header:first').children().hide();
+					},
+					columns: [                  // 각 컬럼값들의 대한 설정이다.
+						{
+							text: 'No', sortable: false, filterable: false, editable: false,
+							groupable: false, draggable: false, resizable: false,
+							datafield: '', columntype: 'number', width: 50, align:'center',
+							cellsrenderer: function (row, column, value) {
+								return "<div style='text-align: center; margin-top: 8px;'>" + (value + 1) + "</div>";
+							}
+						},
+						{text: '서비스견적서 번호', datafield: '', width: 120, align:'center'},  
+						{ 
+							text: '컨설팅번호 / 고객사', datafield: 'noti_title', align:'left',
+							cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+								var param = {sys_id:rowdata.sys_id, noti_seq:rowdata.noti_seq, noti_no:rowdata.boundindex+1};
+								var html = "<div class='txt-l' style='margin-top:8px;'>"
+										 + "<a href='#none' class='a-link' onClick='vue.movePage(\"1\", "+ JSON.stringify(param) +")'>"+ value +"</a>"
+										 + "</div>"
+								return html;
+							},
+
+						},  
+						{ 
+							text: '제품명/식품유형', datafield: 'read_cnt', width: 80, align:'center', cellsalign:'center',
+							cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+								var param = {sys_id:rowdata.sys_id, noti_seq:rowdata.noti_seq};
+								var html = "<div style='text-align: center; margin-top:8px;'>"
+										 + "<a href='#none' class='a-link' onClick='vue.onChangeReadOpen(true, "+ JSON.stringify(param) +")'>"+ value +"</a>"
+										 + "</div>"
+								return html; 
+							},
+						},  
+						{ text: '게시자', datafield: 'assign_nm', width: 120, align:'center', cellsalign:'center' },  
+						{ text: '게시일', datafield: 'start_date', width: 120, align:'center', cellsalign:'center' },
+						{ 
+							text: '게시종료일', datafield: 'complete_date', width: 120, align:'center', cellsalign:'center',
+							cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+								return "<div style='text-align: center; margin-top: 8px;'>"+ (value == '99991231' ? '영구' : value) +"</div>";
+							},
+						},
+					]  
+				});
+
+				// pagechanging
+				$("#calculateGrid").on('pagechanging', function (event) {
+					let pageInfo = event.args;
+
+					// 이전 페이지(oldpagenum) checkbox 해제
+					let oldFirstIdx = (pageInfo.oldpagenum * pageInfo.pagesize);
+					let oldNextFirstIdx = ((pageInfo.oldpagenum + 1) * pageInfo.pagesize);
+					for(var i = oldFirstIdx; i < oldNextFirstIdx; i++) {
+						$("#calculateGrid").jqxGrid('unselectrow', i);
+					}
+            	});
+
+				// 체크박스 전체 해제
+				$("#calculateGrid").jqxGrid('unselectallrows');
+			},
+			// 고객사 comboBox change event
+			changeCstCombo: function() {
+				var _this = this;
+				var param = [{cmm_cd:'mng', p_type:'01', p_parm1:_this.srchCstId, arr_nm:'mngList', comboType:'select'}];
+				getCodeListForArrNm(param, _this);
+
+				// 초기화
+				_this.srchMngId = '';
+			}
+		},
+		mounted: function() {
+			var _this = this;
+			var param = [
+				// 고객사 combo list 
+				// param => cmm_cd:'cst', p_type:'01'or'02'.., arr_nm:'담을 array명'
+				{cmm_cd:'cst', p_type:'01', arr_nm:'cstList', comboType:'select'}
+
+				// 담당자 combo list
+				// param => cmm_cd:'mng', p_type:'01'or'02'.., p_parm1:고객사id, arr_nm:'담을 array명'
+				, {cmm_cd:'mng', p_type:'02', p_parm1:_this.srchCstId, arr_nm:'mngList', comboType:'select'}
+
+				// YN
+				// param => cmm_cd:'YN', arr_nm:'담을 array명'
+				, {cmm_cd:'YN', arr_nm:'ynList', comboType:'select'}
+
+				// 공통코드
+				, {cmm_cd:'FS002', arr_nm:'codeList01'}
+			];
+			getCodeListForArrNm(param, _this);
+		}
+	})
+});
+
+
+
+// start date
+Vue.component('datePickerFrom', {
+	template: '<input type="text" class="calendarDate_start" v-model="val" readonly/>',
+	props: ['val'],
+	mounted: function() {
+		drawDatePicker(this, 'on-change-start-date');
+	},
+	beforeDestroy: function(){
+		destroyDatePicker(this);
+	},
+	methods: {
+	}
+});
+
+// end date
+Vue.component('datePickerTo', {
+	template: '<input type="text" class="calendarDate_end" v-model="val" readonly/>',
+	props: ['val'],
+	mounted: function() {
+		drawDatePicker(this, 'on-change-end-date');
+	},
+	beforeDestroy: function(){
+		destroyDatePicker(this);
+	},
+	methods: {
+	}
+});
+
+</script>
+
+</head>
+<body>
+<div class="wrap">
+	<div class="wrapInner">
+		<header id="header" class="header">
+            <div class="header-inner">
+                <div class="header-main">
+                    <h1 class="logo">
+                        <a href="#"><span>HACCP_DW(관리자)</span></a>
+                    </h1>
+                </div>
+                <nav id="nav" class="header-nav">
+                    <ul class="nav-1depth">
+                        <li><a href="#"><span class="txt">고객사관리</span></a></li>
+                        <li class="is-opened"><a href="#"><span class="txt">협력사관리</span></a></li>
+                        <li><a href="#"><span class="txt">컨설팅관리</span></a></li>
+                        <li><a href="#"><span class="txt">계정관리</span></a></li>
+                        <li><a href="#"><span class="txt">코드관리</span></a></li>
+                    </ul>
+                </nav>
+                <div class="utility">
+                    <div class="profile-layer" id="utilityProfile">
+                        <ul class="profile-menu">
+                            <li class="name">
+                                <a href="#"><span>관리자</span><span>김고객</span></a>
+                            </li>
+                            <li class="logout">
+                                <a href="#">로그아웃</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+		</header>
+		
+
+
+		<div id="container" class="container">
+			<div id="content" class="content">
+                <!-- content -->
+				<div class="page-content">
+                    <div class="page-box">
+                        <div class="clear">
+                            <h2 class="page-title fl">정산</h2>
+                            <div class="fr">
+                                <!-- <button class="btn-search"><i></i>조회</button> -->
+                                
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="board-search mgt20">
+                            <table>
+                                <colgroup>
+                                    <col width="60px"><col width="310px">
+                                    <col width="110px"><col width="">
+                                    <col width="110px"><col width="">
+                                    <col width="110px"><col width="">
+                                </colgroup>
+                                <tbody>
+                                    <tr>
+                                        <th rowspan="2" class="valign-b th-pd">기간</th>
+                                        <td rowspan="2" class="valign-b">
+                                            <div class="mini-btns">
+                                                <button @click="setPeriod('currentMonth')">당월</button>
+                                                <button>당해</button>
+                                                <button>1개월</button>
+                                                <button>3개월</button>
+                                                <button>6개월</button>
+                                                <button>1년</button>
+                                            </div>
+                                            <div class="calendar-wrap">
+                                                <span class="calendar-box"><input type="text" class="calendarDate_start"></span>
+                                                <span class="dash">~</span>
+                                                <span class="calendar-box"><input name="" type="text" class="calendarDate_end"></span>
+                                            </div>
+                                        </td>
+                                        <th>상품명</th>
+                                        <td><select class="full"><option></option></select></td>
+                                        <th>서비스금액</th>
+                                        <td>
+                                            <div class="flex-auto-end">
+                                                <div><input type="text" class="full txt-r"></div>
+                                                <div class="mgl5">원</div>
+                                            </div>
+                                        </td>
+                                        <th>납입액</th>
+                                        <td>
+                                            <div class="flex-auto-end">
+                                                <div><input type="text" class="full txt-r"></div>
+                                                <div class="mgl5">원</div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>진행단계</th>
+                                        <td><select class="full"><option></option></select></td>
+                                        <th>세스코담당자</th>
+                                        <td><select class="full"><option></option></select></td>
+                                        <th>지역본부</th>
+                                        <td><select class="full"><option></option></select></td>
+                                    </tr>
+                                    <tr>
+                                        <th>고객사</th>
+                                        <td><select class="full"><option></option></select></td>
+                                        <th></th>
+                                        <td></td>
+                                        <th></th>
+                                        <td></td>
+                                        <th></th>
+                                        <td></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="page-box">
+                        <div class="clear">
+                            <div class="fl"><h3 class="content-title">현황</h3></div>
+                            <div class="fr">
+                                <a href="" class="btn-save">엑셀다운로드</a>
+                                <button class="btn-search"><i></i>조회</button>
+                            </div>
+                        </div>
+                        <div>
+                            <!-- <div id="calculateGrid"></div>
+                            그리드 영역2 -->
+                            <section class="tree-right-wrap">
+                                <div id="calculateGrid">
+                                </div>
+                                <div class="tb-list">
+                                    <ul class="thead">
+                                        <li>
+                                            <!-- <div style="width:5%;">No</div>
+                                            <div class="txt-l">컨설팅번호 / 고객사</div>
+                                            <div style="width:10%;">제품명/식품유형</div>
+                                            <div style="width:10%;">제조업체명</div>
+                                            <div style="width:8%;">품목보고번호</div>
+                                            <div style="width:12%;" class="txt-l">담당자 / 정산주체<br>접수일시 / 의뢰일시</div>
+                                            <div style="width:10%;" class="txt-l">정산여부 / 정산일</div>
+                                            <div style="width:12%;" class="txt-l">세스코담당자</div>
+                                            <div style="width:8%;" class="txt-l">견적단가</div>
+                                            <div style="width:11%;">최종처리일시</div> -->
+
+                                            <div style="width:5%;">No</div>
+                                            <div class="txt-l">고객사</div>
+                                            <div style="width:10%;">상품명</div>
+                                            <div style="width:10%;">접수(계약)일</div>
+                                            <div style="width:8%;">계산서 담당자</div>
+                                            <div style="width:12%;">계산서 발행 이메일</div>
+                                            <div style="width:10%;">지역본부</div>
+                                            <div style="width:12%;" class="txt-l">세스코담당자</div>
+                                            <div style="width:8%;" class="txt-l">서비스금액</div>
+                                            <div style="width:11%;">납입액</div>     
+                                            <div style="width:11%;">진행단계</div>                                            
+                                            <div style="width:11%;">최종처리일</div>                                            
+
+                                        </li>
+                                    </ul>
+                                    <ul class="tbody">
+                                        <li>
+                                            <div style="width:5%;">
+                                                <label class="check">
+                                                    <input type="checkbox">
+                                                    <span class="ico"></span>
+                                                    <span class="txt">1</span>
+                                                </label>
+                                            </div>
+                                            <div class="txt-l">
+                                                <div class="col-consultant">
+                                                    <span class="tag-circle">신규</span>
+                                                    <span>CJ제일제당</span><br><a href="" class="a-link">C2022060600001-1</a>
+                                                </div>
+                                            </div>
+                                            <div style="width:10%;">설탕/발효식품</div>
+                                            <div style="width:10%;">봄날인터네셔멀</div>
+                                            <div style="width:8%;">12123121312</div>
+                                            <div style="width:12%;" class="txt-l">
+                                                <div class="list-txt">
+                                                    <p><span>고객담당2</span>/<span>우등지팜</span></p>
+                                                    <p class="small">2022-01-05 11:00:14</p>
+                                                </div>
+                                            </div>
+                                            <div style="width:10%;" class="txt-l">
+                                                <div class="list-txt">
+                                                    <p>미정산</p>
+                                                    <p class="small">2022-01-05 11:00:14</p>
+                                                </div>
+                                            </div>
+                                            <div style="width:12%;" class="txt-l">
+                                                <div class="list-txt">
+                                                    <p><span>김세스코</span></p>
+                                                    <p><span class="tag blue">1차 검토중</span><span class="tag">참여자수 5</span></p>
+                                                </div>
+                                            </div>
+                                            <div style="width:8%;" class="txt-l">
+                                                <div class="tooltip-wrap">
+                                                    <i class="ico-tooltip"></i>
+                                                    <span class="tooltip-txt">
+                                                        2022.04.01 23:11:12 김세스코<br>
+                                                        고객사 ㅇㅇㅇ 와 단가 재협의<br>
+                                                        기존 100,000에서 70,000으로 조정
+                                                    </span>
+                                                    <span>70,000</span>
+                                                </div>
+                                            </div>
+                                            <div style="width:11%;">2022-01-05 11:00:14</div>
+                                        </li>
+                                        <li>
+                                            <div style="width:5%;">
+                                                <label class="check">
+                                                    <input type="checkbox">
+                                                    <span class="ico"></span>
+                                                    <span class="txt">2</span>
+                                                </label>
+                                            </div>
+                                            <div class="txt-l">
+                                                <div class="col-consultant">
+                                                    <span class="tag-circle">신규</span>
+                                                    <span>CJ제일제당</span><br><a href="" class="a-link">C2022060600001-1</a>
+                                                </div>
+                                            </div>
+                                            <div style="width:10%;">설탕/발효식품</div>
+                                            <div style="width:10%;">봄날인터네셔멀</div>
+                                            <div style="width:8%;">12123121312</div>
+                                            <div style="width:12%;" class="txt-l">
+                                                <div class="list-txt">
+                                                    <p><span>고객담당2</span>/<span>우등지팜</span></p>
+                                                    <p class="small">2022-01-05 11:00:14</p>
+                                                </div>
+                                            </div>
+                                            <div style="width:10%;" class="txt-l">
+                                                <div class="list-txt">
+                                                    <p>미정산</p>
+                                                    <p class="small">2022-01-05 11:00:14</p>
+                                                </div>
+                                            </div>
+                                            <div style="width:12%;" class="txt-l">
+                                                <div class="list-txt">
+                                                    <p><span>김세스코</span></p>
+                                                    <p><span class="tag blue">검토보류(서류미비)</span><span class="tag">참여자수 5</span></p>
+                                                </div>
+                                            </div>
+                                            <div style="width:8%;" class="txt-l">
+                                                <div class="tooltip-wrap">
+                                                    <i class="ico-tooltip"></i>
+                                                    <span class="tooltip-txt">
+                                                        2022.04.01 23:11:12 김세스코김세스코<br>
+                                                        고객사 ㅇㅇㅇ 와 단가 재협의고객사 ㅇㅇㅇ 와 단가 재협의고객사 ㅇㅇㅇ 와 단가 재협의<br>
+                                                        기존 100,000에서 70,000으로 조정
+                                                    </span>
+                                                    <span>70,000</span>
+                                                </div>
+                                            </div>
+                                            <div style="width:11%;">2022-01-05 11:00:14</div>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <hr>
+                                <div class="clear mgt10">
+                                    <div class="fr">
+                                        <div class="paging-wrap">
+                                            <div class="paging">
+                                                <a class="first" title="이전 끝으로 이동" href="#">이전 끝으로 이동</a>
+                                                <a class="prev" title="이전 10 페이지 전으로 이동" href="#">이전 10 페이지 전으로 이동</a>
+                                                <a class="page-on" href="#">1</a>
+                                                <a href="#">2</a>
+                                                <a href="#">3</a>
+                                                <a href="#">4</a>
+                                                <a href="#">5</a>
+                                                <a class="next" title="다음 10 페이지 후로 이동" href="#">다음 10 페이지 후로 이동</a>
+                                                <a class="last" title="다음 끝으로 이동" href="#">다음 끝으로 이동</a>
+                                            </div>
+                                            <select class="paging-select"><option>10개씩 보기</option></select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <calculate-reg-pop v-if="regPop" :regPop="regPop" @close-reg-pop="closeRegPop"></calculate-reg-pop>
+            <calculate-edit-pop v-if="editPop" :editPop="editPop" @close-edit-pop="closeEditPop"></calculate-edit-pop>
+            <!-- //content -->	                              
+		</div>
+	</div>
+	
+
+
+
+	<footer id="footer" class="footer">
+		<div class="footer-inner">
+			<div>
+				(주)세스코 서울특별시 강동구 상일로 10길 46 세스코 터치센터(134-090)&nbsp;&nbsp;&nbsp;&nbsp;Tel : 1588-1119&nbsp;&nbsp;&nbsp;&nbsp;
+				대표이사 : 사장 전찬혁&nbsp;&nbsp;&nbsp;&nbsp;사업자등록번호 : 212-81-05946<br>
+				COPYRIGHT(C) BY CESCO CO., LTD. ALL RIGHTS RESERVED.
+				<div class="footer-link-box">
+				    <a href="">개인정보처리방침</a>
+				    <a href="">서비스 이용약관</a>
+				    <a href="">전자금융거래이용약관</a>
+				</div>
+			</div>
+		</div>
+	</footer>
+</div>
+</body>
+</html>

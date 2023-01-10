@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<title>표시컨설팅</title>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+<link rel="stylesheet"  th:href="@{/css/import.css}" />
+
+<script type="text/javascript" th:src="@{/js/vue.js}"></script>
+<script type="text/javascript" th:src="@{/js/axios.min.js}"></script>
+<script type="text/javascript" th:src="@{/js/jquery.min.js}"></script>
+<script type="text/javascript" th:src="@{/js/vue-select.js}"></script>
+
+<script type="text/javascript">
+    
+	var vue
+    $(document).ready(function(){
+        vue = new Vue({
+            el: '#app',
+            data: {
+                listPolicy  : [],
+                viewPolicy  : {
+                    title   : '',
+                    content : ''
+                },
+                numPolicy   : 0,
+                delay       : 200
+            },
+
+            mounted(){
+
+                let _this = this;
+
+                axios.get("/api/user/etcpolicy?code=01")
+                .then(function (response) {                    
+                    _this.listPolicy = response.data;
+                    if(_this.listPolicy.length > 0){                        
+                        _this.viewPolicy.title = _this.listPolicy[_this.numPolicy].policy_title;
+                        _this.viewPolicy.content = _this.listPolicy[_this.numPolicy].policy_text;
+                    }
+                }).catch(function (error) {   
+                    alert('약관을 불러오는 중 오류가 발생했습니다.');
+                }).then(function() {
+                });
+
+                $('.list-select-box .btn-select').on('click', function(e) {                    
+                    e.preventDefault();
+                    $('.list-select-box').find('.list-select').stop().slideUp(_this.delay, function() {
+                        $(this).parent().removeClass('on');
+                    });
+                    $(this).siblings().stop().slideToggle(_this.delay);                    
+                });
+                
+                $(document).on('click', function(e) {
+                    if($('.list-select-box').has(e.target).length === 0){
+                        $('.list-select-box').find('.list-select').stop().slideUp(_this.delay);
+                        $('.list-select-box').removeClass('on');
+                    }
+                });
+                
+            },
+            methods: {
+                onSelClick:function(idx, e){
+                    let _this = this;
+                    $(e.target).parents('.list-select').stop().slideUp(_this.delay);
+                    $(e.target).parents('.list-select-box').removeClass('on');
+
+                    if(_this.listPolicy.length > idx){                        
+                        _this.viewPolicy.title = _this.listPolicy[idx].policy_title;
+                        _this.viewPolicy.content = _this.listPolicy[idx].policy_text;
+                    }
+                },
+
+                onMain:function(){
+                    location.href = "/";
+                }
+
+            }
+        });
+    });
+</script>
+</head>
+<body>
+<div class="wrap">
+	<div class="wrapInner" id="app">
+		<div id="container" class="container">
+			<div id="content" class="content">
+                <h2 class="login-title ver2" style="cursor: pointer;" @click="onMain"><span>표시컨설팅&HACCP</span></h2>
+                <!-- content -->
+				<div class="page-content">
+                    <div class="page-terms">
+                        <h3 class="title">
+                            <span>개인정보처리방침</span>
+                        </h3>
+                        <button class="btn-search btn-terms" @click="onMain">메인으로</button>
+                        
+                        <div class="terms-date-wrap">
+                            <div class="list-select-box terms">
+                                <a href="javascript:void(0);" class="btn-select"><span>{{viewPolicy.title}}</span></a>
+                                <ul class="list-select">                                  
+                                    <li :key="index" v-for="(item, index) in listPolicy">
+                                        <a href="javascript:void(0);" @click="onSelClick(index, $event)">
+                                            <span>{{item.policy_title}}</span>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="terms-content" v-html="viewPolicy.content">
+                        </div>
+                    </div>
+				</div>
+				<!-- //content -->
+			</div>
+		</div>
+	</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/default}">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1 minimum-scale=1" />
+<script th:inline="javascript" type="text/javascript">
+var vue
+    $(document).ready(function(){
+        vue = new Vue({
+            el: '#app',
+            data: {
+
+            },
+            methods: {
+            }
+        })
+    });
+</script>
+
+</head>
+<body>
+	<section layout:fragment="content" id="app"  v-cloak>
+		<div class="layer-pop-wrap">
+			<div class="layer-pop-box large">
+				<div class="pop-wrap">
+					<h1 class="blind">표시컨설팅 > 신규 컨설팅 의뢰 팝업</h1>
+					<header class="pop-header">
+						<div class="pop-header-title-wrap">
+							<h3 class="pop-header-title">신규 컨설팅 의뢰</h3>
+							<button class="btn-pop-close js-pop-close">닫기</button>
+						</div>
+					</header>
+					<div class="pop-container">
+						<div class="pop-common-box">
+							<div class="form-info-wrap">
+								<div class="form-info-box">
+									<dl>
+										<dt>고객사명</dt>
+										<dd>CJ진천공장</dd>
+									</dl>
+								</div>
+							</div>
+							<div class="mgt30">
+								<h3 class="content-title">컨설팅 의뢰 제품정보<span class="txt-compulsory">(필수)</span></h3>
+								<div class="tb-list tb-list_input narrow">
+									<ul class="thead">
+										<li>
+											<div>제품명</div>
+											<div style="width:15%;">유형</div>
+											<div style="width:13%;">품목보고번호</div>
+											<div style="width:30%;">제조업체명</div>
+											<div style="width:10%;"></div>
+										</li>
+									</ul>
+									<ul class="tbody">
+										<li>
+											<div><input type="text" class="full" placeholder="제품명을 입력하세요"></div>
+											<div style="width:15%;"><input type="text" class="full" placeholder="유형을 입력하세요"></div>
+											<div style="width:13%;"><input type="text" class="full" placeholder="품목보고번호"></div>
+											<div style="width:30%;"><input type="text" class="full" placeholder="제조업체명을 입력하세요"></div>
+											<div style="width:10%;" class="txt-l">
+												<div class="tb-btns-wrap"><button class="btn-del"><i>-</i><span>삭제</span></button></div>
+											</div>
+										</li>
+										<li>
+											<div><input type="text" class="full" placeholder="제품명을 입력하세요"></div>
+											<div style="width:15%;"><input type="text" class="full" placeholder="유형을 입력하세요"></div>
+											<div style="width:13%;"><input type="text" class="full" placeholder="품목보고번호"></div>
+											<div style="width:30%;"><input type="text" class="full" placeholder="제조업체명을 입력하세요"></div>
+											<div style="width:10%;" class="txt-l">
+												<div class="tb-btns-wrap">
+													<button class="btn-del"><i>-</i><span>삭제</span></button>
+													<button class="btn-add"><i>+</i><span>추가</span></button>
+												</div>
+											</div>
+										</li>
+									</ul>
+								</div>
+							</div>
+							<div class="mgt30">
+								<h3 class="content-title">담당자 정보</h3>
+								<table class="tb-view-01">
+									<colgroup><col width="150px"><col width=""><col width="150px"><col width=""></colgroup>
+									<tbody>
+										<tr>
+											<th>업무담당자</th>
+											<td><input type="text" class="full" placeholder="담당자명을 입력하세요"></td>
+											<th></th>
+											<td></td>
+										</tr>
+										<tr>
+											<th>계산서담당자명<i class="th-star">*</i></th>
+											<td><input type="text" class="full" placeholder="세금계산서 담당자명을 입력하세요"></td>
+											<th>계산서 수신 이메일<i class="th-star">*</i></th>
+											<td><input type="text" class="full" placeholder="세금계산서를 수신할 이메일 주소를 입력하세요"></td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+							<div class="mgt30">
+								<h3 class="content-title">첨부파일</h3>
+								<table class="tb-view-01">
+									<colgroup><col width="30%"><col width=""><col width="10%"></colgroup>
+									<tbody>
+										<tr>
+											<th><input type="text" class="full" placeholder="파일명"></th>
+											<td>
+												<div class="file-upload-wrap">
+													<div class="file-upload">
+														<input type="file" id="file_name" class="upload-hidden">
+														<input class="upload-name" value="photo_2021-12-21_15-34-35.jpg" disabled="disabled">
+														<label for="file_name"><i></i>파일첨부</label>
+													</div>
+												</div>
+											</td>
+											<td class="txt-l">
+												<div class="tb-btns-wrap">
+													<button class="btn-del"><i>-</i><span>삭제</span></button>
+												</div>
+											</td>
+										</tr>
+										<tr>
+											<th><input type="text" class="full" placeholder="파일명"></th>
+											<td>
+												<div class="file-upload-wrap">
+													<div class="file-upload">
+														<input type="file" id="file_name" class="upload-hidden">
+														<input class="upload-name" value="photo_2021-12-21_15-34-35.jpg" disabled="disabled">
+														<label for="file_name"><i></i>파일첨부</label>
+													</div>
+												</div>
+											</td>
+											<td class="txt-l">
+												<div class="tb-btns-wrap">
+													<button class="btn-del"><i>-</i><span>삭제</span></button>
+													<button class="btn-add"><i>+</i><span>추가</span></button>
+												</div>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+					<div class="pop-bottom">
+						<div class="pop-btn-box">
+							<a href="" class="btn-pop-bottom">취소</a>
+							<a href="" class="btn-pop-bottom">등록</a>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>		
+</body>
+</html>

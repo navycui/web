@@ -1,0 +1,2698 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/default}">
+
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1 minimum-scale=1" />
+<script th:inline="javascript" type="text/javascript">
+
+// 담당자 선택 팝업
+Vue.component('managerSearchPop', {
+    template: '#managerSearchPop',
+    props: ['open', 'opentype'],
+    data() {
+        return {                  
+            srchCstNm       : '',        // 검색 고객사명
+            custList        : []
+        }
+    },
+    mounted(){
+        let _this = this;
+
+        _this.srchCstNm       = '';
+        _this.custList        = [];
+        _this.searchManager();
+
+    },
+    methods: {
+        // 창 닫기
+        onPopClose : function() {
+            this.$emit("on-pop-close","");
+        },
+
+        searchManager : function(){
+            
+            let url = '/commPopup/getCustomerListForPop';
+            let _this = this;                
+            let param = {srchCstNm:(_this.srchCstNm == null || _this.srchCstNm == undefined ? '' : _this.srchCstNm)};
+
+            axiosCall('get', url, param, function(response) {                    
+                _this.customerList = response.data;
+                _this.drawTable();
+            });
+
+        },
+
+        setManager : function() {
+            
+            let _this = this;
+
+            // 선택 데이터                            
+            let idxs = $('#customerGrid').jqxGrid('getselectedrowindexes');
+                            
+            if(idxs.length < 1){
+                cmmAlert((_this.opentype == 'T' ? '고객사' : '협력사') + '를 선택해 주세요.');
+                return false;
+            }
+
+            let rowdata = $('#customerGrid').jqxGrid('getrowdata', idxs);
+
+            switch (_this.opentype) {
+                case 'M':
+                    _this.$emit("on-set-manager-info",rowdata);
+                    break;
+                case 'T':
+                    _this.$emit("on-set-top-manager-info",rowdata);
+                    break;                
+            }
+
+            // if(_this.opentype === 'M'){
+            //     _this.$emit("on-set-manager-info",rowdata);
+            // }else{
+            //     _this.$emit("on-set-cuscom-info",rowdata);
+            // }
+
+            _this.onPopClose();
+        },
+
+        drawTable: function() {
+
+            let _this = this;
+            let source = {  
+                datatype: "json", // json 형태의 데이터를 셋팅할 것이고. // array
+                datafields: [     // 각필의 이름과 타입은 datafields에 마찬가지로 json 형태이다.
+                    { name: 'sys_id', type: 'string' },     // sys id
+                    { name: 'cst_nm', type: 'string' },     // 고객사명
+                    { name: 'cst_id', type: 'string' },     // 고객사 코드
+                    { name: 'mdfr_dt', type: 'string' },    // 수정일시(등록일시)
+                ],  
+                localdata: _this.customerList, // 위에서 셋팅해놓은 data를 localdata에 담아준다.
+            };
+            
+            var dataAdapter = new $.jqx.dataAdapter(source);  
+
+            $("#customerGrid").jqxGrid({  
+                width               :   '100%',
+                autoheight          :   true,
+                source              :   dataAdapter,
+                selectionmode       :   'singlerow',
+                pageable			:   true,
+                pagermode			:   'simple',
+                pagesize			:   5,
+                pagerbuttonscount	:   5,    
+                columnsheight       :   50,
+                rowsheight          :   50,                
+                localization        : { emptydatastring:'해당 자료가 존재하지 않습니다.' },
+                columns: [                  // 각 컬럼값들의 대한 설정이다.
+                    {
+                        text: 'No', sortable: false, filterable: false, editable: false,
+                        groupable: false, draggable: false, resizable: false,
+                        datafield: '', columntype: 'number', align:'center', width:'10%',
+                        cellsrenderer: function (row, column, value) {
+                            return "<div style='text-align: center; margin-top: 18px;'>" + (value + 1) + "</div>";
+                        }
+                    },
+                    { text: '고객사명', datafield: 'cst_nm', align:'left', cellsalign:'left', width:'50%' },  
+                    { text: '고객사코드', datafield: 'cst_id', align:'center', cellsalign:'center', width:'20%' },  
+                    { text: '등록일시', datafield: 'mdfr_dt', align:'center', cellsalign:'center', width:'20%' },
+                ]  
+            });
+        }
+    }
+})
+
+// 신규 컨설팅 등록
+Vue.component('newConsultPop', {
+    template: '#newConsultPop',
+    props: ['open', 'cuslist', 'consultinfo', 'managerlist', 'isupt', 'popprodlist', 
+            'isreadonly', 'ispartreadonly', 'mngmanagerlist', 'usertpcd', 'searchcombodept',
+            'salemnglist', 'contmnglist'],
+    data() {
+        return {            
+            prodCdList          : [],       // 상품 코드 목록 : FS017
+            prodTpCdList        : [],       // 등록 상품유형 목록 : FS018
+            price_total         : 0,        // 견적단가(합계)
+
+            addProdTpCdList     : [],       // 추가한 유형목록
+            selProdTpCd         : '',       // 선택한 유형코드
+
+            cescoList           : [],       // 세스코 담당자 목록
+            mngCescoList        : [],       // 주 세스코 담당자 목록
+            contNoList          : [],       // 계약 일련번호 목록
+
+            attachFileList      : [],       // 첨부파일 목록
+            attachFileTypeList  : [],       // 첨부파일 유형목록
+            attachDelFileList   : [],       // 첨부파일 삭제 목록
+
+            search_dept_cd      : '',       // 세스코 담당자 부서 
+
+            numEstAmt1          : 0,
+            numEstAmt2          : 0,
+            numEstAmt3          : 0,
+
+            cntReadonly         : 0,
+
+            cescoDeptList       : [],       // 세스코담당자 지역 본부 목록
+            cescoListSub        : [],       // 세스코담당자 목록 전부            
+        }
+    },
+    // 금액 콤마표시
+    filters: {
+        currency: function (value) {
+            var num = new Number(value);
+            return num.toFixed(0).replace(/(\d)(?=(\d{3})+(?:\.\d+)?$)/g, "$1,")
+        }
+    },
+    mounted(){
+        let _this = this;
+        // _this.onReSet();
+
+        // 공통 코드 가져오기
+        let param = [
+            {sys_cd:'HC',   cmm_cd:'FS017', arr_nm:'prodCdList',    comboType:'select'}, // 상품코드 목록
+            {sys_cd:'HC',   cmm_cd:'FS018', arr_nm:'prodTpCdList',  comboType:'select'}, // 상품유형 목록
+        ];
+
+        getCodeListForArrNm(param, _this);
+
+        // 세스코 담당자 목록
+        _this.getCescoManagerList();        
+
+        if(_this.isupt){            
+
+            _this.numEstAmt1 = _this.consultinfo.est_amt1;
+            _this.numEstAmt2 = _this.consultinfo.est_amt2;
+            _this.numEstAmt3 = _this.consultinfo.est_amt3;
+
+            _this.consultinfo.est_amt1 = parseInt(_this.numEstAmt1).toLocaleString();
+            _this.consultinfo.est_amt2 = parseInt(_this.numEstAmt2).toLocaleString();
+            _this.consultinfo.est_amt3 = parseInt(_this.numEstAmt3).toLocaleString();
+            
+            _this.onChgPrice();
+
+            for(prodInfo of _this.popprodlist){
+
+                let setFoodType = {
+                    cmm_dtl_cd : prodInfo.prod_tp_cd,
+                    cmm_dtl_nm : prodInfo.prod_tp_nm
+                }
+
+                _this.addProdTpCdList.push(setFoodType);
+                _this.attachFileTypeList.push(setFoodType);
+            }
+            
+            // prod_cd 상품코드
+            // axiosCall('get', '/api/hcConsultMgt/contNumList', {prod_cd:_this.consultinfo.prod_cd}, function(response) {
+            //     if(response.data.length > 0){
+            //         for(contInfo of response.data){
+            //             // let contNo = {
+            //             //     cont_cd : contInfo.cont_id,
+            //             //     cont_nm : contInfo.cont_no
+            //             // }            
+            //             _this.contNoList.push(contInfo);
+            //         }
+            //     }
+            // });
+
+            let fileParam = [
+                { atch_kn_cd : 'F00003', arr : 'attachFileList' }   // 유형 파일 F00001 : 유저입력 F00002 : 견적서 F00003 : 제품유형별 이미지
+            ];            
+
+            // 첨부파일 정보 가져오기
+            _this.onGetAttachList(fileParam);            
+
+        }else{            
+            _this.addFileUpload();      // 첨부파일 추가
+        }
+    },
+    updated(){            
+        // 읽기 전용
+        let _this = this;
+
+        if(_this.cntReadonly++ < 7 ){
+            if(_this.cntReadonly > 3){                
+                if(_this.isreadonly && document.getElementById('consultPopDiv') != null){
+                    for(el of document.getElementById('consultPopDiv').getElementsByTagName('input')){
+                        // el.disabled = _this.isreadonly;                    
+                        if(!(_this.ispartreadonly && el.type == 'checkbox' && el.name != 'bill_check')){
+                            el.disabled = _this.isreadonly;
+                        }
+                    }
+                    for(el of document.getElementById('consultPopDiv').getElementsByTagName('select')){
+                        // el.disabled = _this.isreadonly;
+                        if(!(_this.ispartreadonly && 
+                        (el.id == 'selManager' || el.id == 'selCescoManager' || el.id == 'selCescoDept' || el.id == 'selSalemnglist' || el.id == 'selContmnglist'))){
+                            el.disabled = _this.isreadonly;
+                        }
+                    }
+                }
+            }
+        }
+        
+    },
+    methods: {
+        // 협렵사 담당자 팝업
+        onManagerSearchPopOpen : function(type){
+            if(this.cuslist.length == 0 && type != 'T'){
+                cmmAlert("고객사를 먼저 등록해 주세요.")
+                return false;
+            }
+            this.$emit("on-manager-pop-open", type);
+        },
+       
+        // MD 값이 50넘지 못하게
+        onMdChk: function(e, maxNum){
+            e.target.value = e.target.value >= maxNum ? maxNum : e.target.value;
+        },
+
+        onPriceChk: function(e, maxNum){
+            e.target.value = e.target.value >= maxNum ? maxNum : e.target.value;            
+        },
+
+        onChkMaxNum: function(e, type, maxNum){
+        
+            let inNum = e.target.value.replace(/[^0-9]/g, '');
+
+            inNum = inNum == '' ? 0 : inNum;
+            inNum = inNum < 1 ? 0 : inNum;
+
+            let _this = this;
+            switch (type) {
+                case 'md_day':
+                    _this.consultinfo.md_day = parseInt(inNum) > parseInt(maxNum) ? parseInt(maxNum) : parseInt(inNum);
+                    break; 
+                case 'est_amt1':
+                    _this.consultinfo.est_amt1 = parseInt(inNum) > parseInt(maxNum) ? parseInt(maxNum).toLocaleString() : parseInt(inNum).toLocaleString();
+                    _this.numEstAmt1 = parseInt(inNum) > parseInt(maxNum) ? parseInt(maxNum) : parseInt(inNum);
+                    _this.onChgPrice();
+                    break; 
+                case 'est_amt2':
+                    _this.consultinfo.est_amt2 = parseInt(inNum) > parseInt(maxNum) ? parseInt(maxNum).toLocaleString() : parseInt(inNum).toLocaleString();
+                    _this.numEstAmt2 = parseInt(inNum) > parseInt(maxNum) ? parseInt(maxNum) : parseInt(inNum);
+                    _this.onChgPrice();
+                    break; 
+                case 'est_amt3':
+                    _this.consultinfo.est_amt3 = parseInt(inNum) > parseInt(maxNum) ? parseInt(maxNum).toLocaleString() : parseInt(inNum).toLocaleString();
+                    _this.numEstAmt3 = parseInt(inNum) > parseInt(maxNum) ? parseInt(maxNum) : parseInt(inNum);
+                    _this.onChgPrice();
+                    break;                               
+                default:
+                    break;
+            }
+
+        },
+
+        // 주 담당자 이름 설정
+        selCusMainManager: function(e, iType){
+            
+            let val = e.target.value == '' ? '' : e.target.options[e.target.selectedIndex].text;
+            let _this = this;
+            
+            if(iType == 1){                
+                _this.consultinfo.cst_mng_nm = val;
+                let arrChkSign = $('input[name=chk_fs_sign_yn]');
+                let arrChkCompSign = $('input[name=chk_fs_comp_sign_yn]');
+
+                for (let i = 0; i < _this.managerlist.length; i++) {
+                    if(arrChkSign[i].disabled){
+                        _this.managerlist[i].fs_sign_yn = 'N';
+                        _this.managerlist[i].fs_comp_sign_yn = 'N';
+                        arrChkSign[i].disabled = false;
+                        arrChkCompSign[i].disabled = false;
+                    }
+                }
+
+                $.each(_this.managerlist, function(idx, obj){
+                    if(obj.user_id == e.target.value){
+                        obj.fs_sign_yn = 'Y';
+                        obj.fs_comp_sign_yn = 'Y';
+                        arrChkSign[idx].disabled = true;
+                        arrChkCompSign[idx].disabled = true;
+                        return false;
+                    }
+                });
+
+            }else{  
+                
+                _this.consultinfo.fs_mng_nm = val;
+
+                let arrChkSign = $('input[name=chk_sign_yn]');
+                let arrChkCompSign = $('input[name=chk_comp_sign_yn]');
+                
+                for (let i = 0; i < _this.cescoListSub.length; i++) {
+                    if(arrChkSign[i].disabled){
+                        _this.cescoListSub[i].fs_sign_yn = 'N';
+                        _this.cescoListSub[i].fs_comp_sign_yn = 'N';
+                        arrChkSign[i].disabled = false;
+                        arrChkCompSign[i].disabled = false;
+                    }
+                }
+
+                $.each(_this.cescoListSub, function(idx, obj){
+                    if(obj.user_id == e.target.value){
+                        obj.fs_sign_yn = 'Y';
+                        obj.fs_comp_sign_yn = 'Y';
+                        arrChkSign[idx].disabled = true;
+                        arrChkCompSign[idx].disabled = true;
+                        return false;
+                    }
+                });
+                
+            }
+        },
+
+        // 창 닫기
+        onPopClose : function() {
+            this.$emit("on-pop-close","");
+        },
+
+        // 견적단가
+        onChgPrice:function(){
+            let _this = this;            
+            _this.price_total = parseInt(_this.numEstAmt1) + parseInt(_this.numEstAmt2) + parseInt(_this.numEstAmt3);
+        },        
+
+        // 세스코 담당자 지역코드 조회
+        onSearchCescoDept: function(e){
+            let _this = this;
+            let dept_nm = e.target.value;
+
+            _this.mngCescoList = [];
+            _this.consultinfo.fs_mng_id = '';
+
+            $.each(_this.cescoList, function(idx, obj){
+                obj.fs_chat_yn = 'N';
+                obj.fs_sign_yn = 'N';
+                obj.fs_comp_sign_yn = 'N';
+            });
+
+            if(dept_nm == ''){
+                _this.cescoListSub = _this.cescoList;
+            }else{
+                _this.cescoListSub = _this.cescoList.filter((item,index)=> item.user_dept_nm == dept_nm);
+            }
+            
+        },
+
+        // 접수일 선택
+        onChangeReceiveDate: function(val) {            
+            this.$emit("on-change-receive-date", val.slice(-10, val.length));
+        },
+
+        // 유형 추가
+        onAddCfType: function(){
+
+            let _this = this;
+
+            if(_this.selProdTpCd !== ''){
+
+                let chkAddFood = true;
+
+                for(const orgFoodType of _this.addProdTpCdList ){
+                    if(orgFoodType.cmm_dtl_cd === _this.selProdTpCd){
+                        chkAddFood = false;
+                        break;
+                    }
+                }
+
+                if(chkAddFood){
+                    for (const cusFoodType of _this.prodTpCdList) {
+                        if(_this.selProdTpCd == cusFoodType.cmm_dtl_cd){
+                            let setFoodType = {
+                                cmm_dtl_cd : cusFoodType.cmm_dtl_cd,
+                                cmm_dtl_nm : cusFoodType.cmm_dtl_nm
+                            }
+
+                            _this.addProdTpCdList.push(setFoodType);
+                            _this.attachFileTypeList.push(setFoodType);
+
+                            break;
+                        }
+                    }
+                }else{
+                    cmmAlert('이미 등록한 상품 유형 입니다.');    
+                }
+            }else{
+                cmmAlert('상품 유형을 선택해 주세요.');
+            }
+        },
+
+        // 유형 삭제
+        delCfType: function(cmm_dtl_cd){
+            let _this = this;
+            
+            _this.addProdTpCdList = _this.addProdTpCdList.filter((item)=> item.cmm_dtl_cd != cmm_dtl_cd);
+            _this.attachFileTypeList = _this.attachFileTypeList.filter((item)=> item.cmm_dtl_cd != cmm_dtl_cd);
+
+            for(fileInfo of _this.attachFileList){
+                if(fileInfo.atch_ref_id === cmm_dtl_cd)
+                    fileInfo.atch_ref_id = '';
+            }
+        },
+
+        // 세스코 담당자 목록
+        getCescoManagerList: function(){            
+
+            let _this = this;
+            let paramPtype = '4';
+            let paramCstId = '10000000';
+
+            if(_this.usertpcd === '03'){
+                paramPtype = '3';
+                paramCstId = _this.search_dept_cd;
+            }
+
+            if(_this.usertpcd === '01'){
+                paramPtype = '0';
+                paramCstId = _this.search_dept_cd;
+            }
+
+            _this.cescoList = [];
+            // 담당자 목록 가져오기
+            let param = {
+                p_type : paramPtype,
+                sys_id : _this.consultinfo.sys_id,
+                fs_no : _this.consultinfo.fs_no,
+                cst_id : paramCstId
+            }
+
+            axiosCall('get', '/api/hcConsultMgt/managerList', param, function(response) {
+                if(response.data.length > 0){
+                    let dataManager = response.data;
+
+                    dataManager.forEach(manager => {
+                        if(!_this.isupt){
+                            manager.fs_bill_mng_yn = "N";
+                            manager.fs_chat_yn = "N";
+                        }else{
+                            if(manager.fs_chat_yn === "Y")
+                                _this.mngCescoList.push(manager);
+                        }
+                        _this.cescoList.push(manager);
+                        _this.cescoListSub.push(manager);
+
+                        let bChkDept = true;
+                        $.each(_this.cescoDeptList, function(idx, obj){
+                            if(obj == manager.user_dept_nm){
+                                bChkDept = false;
+                                return false;
+                            }
+                        })
+
+                        if(bChkDept){
+                            _this.cescoDeptList.push(manager.user_dept_nm);
+                        }
+                    });                    
+                }else{
+                    cmmAlert('담당자 정보가 없습니다.');
+                }
+            }, 'codeList');
+
+        },
+
+        // 계약일련번호 목록
+        onChgProdCd: function(e){
+
+            let _this = this;
+            let val = e.target.value == '' ? '' : e.target.options[e.target.selectedIndex].text;
+
+            _this.consultinfo.prod_nm = val;
+            // _this.contNoList = [];
+            // _this.consultinfo.cont_no = '';
+            // _this.consultinfo.cont_id = '';
+            // _this.consultinfo.sale_mng_id = '';
+
+            // axiosCall('get', '/api/hcConsultMgt/contNumList', {prod_cd:_this.consultinfo.prod_cd}, function(response) {
+
+            //     if(response.data.length > 0){
+
+            //         for(contInfo of response.data){
+            //             // let contNo = {
+            //             //     cont_cd : contInfo.cont_id,
+            //             //     cont_nm : contInfo.cont_no
+            //             // }
+            //             // _this.contNoList.push(contNo);
+            //             _this.contNoList.push(contInfo);
+            //         }
+
+            //     }else{
+            //         cmmAlert('계약 일련 번호가 없습니다.');
+            //     }
+            // }, 'codeList');
+        },
+
+        // 계약 일련번호 관련 ID
+        onChgContNo: function(e){
+            // let _this = this;
+            // const selContNo = e.target;
+
+            // if(selContNo.selectedIndex == 0){
+            //     _this.consultinfo.cont_nm = '';
+            //     _this.consultinfo.cont_no = '';
+            // }else{
+            //     _this.consultinfo.cont_nm = _this.contNoList[selContNo.selectedIndex].cont_nm;
+            //     _this.consultinfo.cont_no = selContNo.options[selContNo.selectedIndex].text;                
+            // }            
+        },
+
+        // 첨부파일 추가
+        addFileUpload: function(listName){
+            let _this = this;
+
+            // 첨부파일
+            let attachFile = {
+                atch_seq : '0',             // 파일첨부순번
+                atch_kn_cd : 'F00003',      // 파일종류구분 FS015[첨부구분]
+                atch_ref_id : '',           // 파일 상품유형 코드 FS001[상품유형]
+                atch_nm : '',               // 파일명
+                url : '',                   // 서버주소
+                org_file_nm : '',           // 원본파일명
+                ser_file_nm : '',           // 서버파일명
+                status : 'Y'                // 상태
+            }
+
+            _this.attachFileList.push(attachFile);
+        },        
+
+        // 파일 다운로드
+        onDownload: function(filename){
+            // location.href = '/api/filedownload/cons/' + filename;            
+            axiosCallDownLoad(filename);
+        },
+
+        // 첨부파일 가져오기
+        onGetAttachList: function(data){
+
+            let _this = this;
+            data.forEach(fileList => {
+
+                let param = { 
+                    sys_id : _this.consultinfo.sys_id,
+                    fs_no : _this.consultinfo.fs_no,
+                    atch_kn_cd : fileList.atch_kn_cd
+                };                
+
+                // 첨부파일 정보 가져오기
+                axiosCall('get', '/consult/api/consultAttachList', param, function(response) {                    
+                    response.data.forEach(element => {
+                        _this[fileList.arr].push(element);
+                    });
+
+                    if(fileList.arr === 'attachFileList'){
+                        _this.addFileUpload('attachFileList');
+                    }
+                    
+                });
+
+            });
+
+        },
+        
+        // 첨부 파일 선택
+        onFileUpload: function(e, index, type){            
+            let _this = this;
+
+            if(e.target.files[0] == undefined){
+                _this.attachFileList[index].org_file_nm = '';
+            }else{
+                let fileSize = ((e.target.files[0].size)/1024/1024).toFixed(4);
+            
+                // if(fileSize > 5000){
+                //     cmmAlert('5G이상 등록 할 수 없습니다.');
+                //     return false;
+                // }
+
+                if(e.target.value != ''){
+                    _this.attachFileList[index].org_file_nm = e.target.files[0].name;
+                    if(_this.isupt)
+                        _this.attachFileList[index].status = 'N';
+                }
+            }
+        },
+        
+        // 파일 목록에서 삭제
+        delFileUpload: function(delIndex){
+
+            let _this = this;
+
+            if(_this.isupt && parseInt(_this.attachFileList[delIndex].atch_seq) > 0){
+                _this.attachDelFileList.push(_this.attachFileList[delIndex]);
+            }
+            
+            _this.attachFileList = _this.attachFileList.filter((item,index)=> index != delIndex)
+
+            if(_this.attachFileList.length == 0){
+                _this.addFileUpload('attachFileList')
+            }
+
+        },
+
+        // 담당자만 수정
+        setConSultManager: function(){            
+            let _this = this;
+
+            if(_this.consultinfo.sale_mng_id === ''){
+                cmmAlert('매출사원을 선택해 주세요.');
+                return false;
+            }
+
+            if(_this.consultinfo.cont_id === ''){
+                cmmAlert('계약사원을 선택해 주세요.');
+                return false;
+            }
+            
+            let cntChatMem = 0;
+            let cntBillMem = 0;
+
+            for(managerInfo of _this.managerlist) {
+                if(managerInfo.fs_bill_mng_yn === "Y") cntBillMem++;
+                if(managerInfo.fs_chat_yn === "Y") cntChatMem++;
+            }
+            
+            if(cntChatMem === 0){
+                cmmAlert('선택된 담당자가 없습니다.');
+                return;
+            }
+
+            if(cntBillMem === 0){
+                cmmAlert('선택된 정산 담당자가 없습니다.');
+                return;
+            }
+
+            let cntCescoChat = 0;
+
+            for(cescoInfo of _this.cescoList){
+                if(cescoInfo.fs_chat_yn === "Y") cntCescoChat++;
+            }
+
+            if(cntCescoChat === 0){
+                cmmAlert('선택된 세스코 담당자가 없습니다.');
+                return;
+            }
+
+            if(_this.consultinfo.cst_mng_id === ''){
+                cmmAlert('고객 주 담당자를 선택해 주세요.');
+                return false;
+            }
+
+            if(_this.consultinfo.fs_mng_id === ''){
+                cmmAlert('세스코 주 담당자를 선택해 주세요.');
+                return false;
+            }
+
+            let reqManagerList = [];
+
+            _this.managerlist.forEach(manager => {
+                reqManagerList.push(manager);
+            });
+
+            _this.cescoList.forEach(cesco => {
+                if(cesco.fs_chat_yn === 'Y'){
+                    reqManagerList.push(cesco);
+                }
+            });
+
+            $.each(reqManagerList, function(idx, item){
+                item.fs_no = _this.consultinfo.fs_no;
+            })
+
+            _this.consultinfo.est_amt1 = _this.numEstAmt1;
+            _this.consultinfo.est_amt2 = _this.numEstAmt2;
+            _this.consultinfo.est_amt3 = _this.numEstAmt3; 
+            
+            const formData = new FormData();
+            formData.append("consultInfo", new Blob([JSON.stringify(_this.consultinfo)], {type: "application/json"}));
+            formData.append("reqManagerList", new Blob([JSON.stringify(reqManagerList)], {type: "application/json"}));
+
+            axiosCall('multi', '/api/hcConsultMgt/uptManager', formData, function(response) {
+
+                cmmAlert(response.data);
+                _this.$emit("on-pop-close","");
+                _this.$emit("on-reload","");
+
+            });
+
+        },
+        
+        // 등록
+        setConSult : function(){
+            let _this = this;
+            
+            // 등록 제품 정보 확인
+            if(_this.consultinfo.cst_nm === ''){
+                cmmAlert('고객사를 선택해 주세요.');
+                return false;
+            }
+
+            if(_this.consultinfo.sale_mng_id === ''){
+                cmmAlert('매출사원을 선택해 주세요.');
+                return false;
+            }
+
+            if(_this.consultinfo.cont_id === ''){
+                cmmAlert('계약사원을 선택해 주세요.');
+                return false;
+            }
+
+            if(_this.consultinfo.prod_cd.trim() === ''){
+                cmmAlert('상품코드를 선택해 주세요.');
+                return false;
+            }
+
+            // if(_this.consultinfo.prod_nm.trim() === ''){
+            //     cmmAlert('상품명을 입력해 주세요.');
+            //     return false;
+            // }
+
+            // if(_this.consultinfo.cont_no === ''){
+            //     cmmAlert('계약번호를 입력해 주세요.');
+            //     return false;
+            // }
+
+            if(_this.consultinfo.receive_date.trim() === ''){
+                cmmAlert('접수일을 선택해 주세요.');
+                return false;
+            }
+
+            if(parseInt(_this.consultinfo.md_day) === 0){
+                cmmAlert('계약 MD를 입력해 주세요.');
+                return false;
+            }
+
+            if(parseInt(_this.consultinfo.est_amt1) === 0 && parseInt(_this.consultinfo.est_amt2) === 0 && parseInt(_this.consultinfo.est_amt3) === 0){
+                cmmAlert('계약금, 중도금, 잔금 중 한가지는 입력해야 합니다.');
+                return false;
+            }
+
+            if(_this.addProdTpCdList.length === 0){
+                cmmAlert('상품유형을 선택해 주세요.');
+                return false;
+            }
+
+            if(_this.managerlist.length === 0){
+                cmmAlert('담당자 목록이 없습니다.');
+                return false;
+            }
+
+            let cntChatMem = 0;
+            let cntBillMem = 0;
+
+            for(managerInfo of _this.managerlist) {
+                if(managerInfo.fs_bill_mng_yn === "Y") cntBillMem++;
+                if(managerInfo.fs_chat_yn === "Y") cntChatMem++;
+            }
+            
+            if(cntChatMem === 0){
+                cmmAlert('선택된 담당자가 없습니다.');
+                return;
+            }
+
+            if(cntBillMem === 0){
+                cmmAlert('선택된 정산 담당자가 없습니다.');
+                return;
+            }
+
+            let cntCescoChat = 0;
+
+            for(cescoInfo of _this.cescoList){
+                if(cescoInfo.fs_chat_yn === "Y") cntCescoChat++;
+            }
+
+            if(cntCescoChat === 0){
+                cmmAlert('선택된 세스코 담당자가 없습니다.');
+                return;
+            }
+
+            if(_this.consultinfo.cst_mng_id === ''){
+                cmmAlert('고객 주 담당자를 선택해 주세요.');
+                return false;
+            }
+
+            if(_this.consultinfo.fs_mng_id === ''){
+                cmmAlert('세스코 주 담당자를 선택해 주세요.');
+                return false;
+            }
+            
+            let reqManagerList = [];
+
+            _this.managerlist.forEach(manager => {
+                reqManagerList.push(manager);
+            });
+
+            _this.cescoList.forEach(cesco => {
+                if(cesco.fs_chat_yn === 'Y'){
+                    reqManagerList.push(cesco);
+                }
+            });
+
+            let selAttachFileList = [];
+            let valueChk = true;
+
+            //첨부 파일 유형 선택 확인
+            _this.attachFileList.forEach(file => {
+                if(valueChk){
+                    if(file.org_file_nm.length > 0){
+                        if(file.atch_ref_id === '' ){
+                            cmmAlert('첨부한 파일 중에 유형이 선택되지 않은 파일이 있습니다.');
+                            valueChk = false;
+                        }else{
+                            selAttachFileList.push(file);
+                        }
+                    }
+                }
+            });
+
+            if(!valueChk) return false;
+
+            _this.consultinfo.est_amt1 = _this.numEstAmt1;
+            _this.consultinfo.est_amt2 = _this.numEstAmt2;
+            _this.consultinfo.est_amt3 = _this.numEstAmt3; 
+
+            let data = {                 
+                'consultMgtHcMst' : _this.consultinfo,
+                'listConsultMgtHcManager' : reqManagerList,
+                'listConsultAttach' : selAttachFileList,
+                'listProdTpCd' : _this.addProdTpCdList,
+                'listConsultAttachDel' : _this.attachDelFileList
+            }
+            
+            var attachfiles = document.getElementsByName("attach_file_list");
+
+            const formData = new FormData();
+
+            formData.append("consinfo", new Blob([JSON.stringify(data)], {type: "application/json"}));
+
+            for (let i = 0; i < attachfiles.length; i++) {
+                formData.append('attachfiles', attachfiles[i].files[0]);
+            }
+
+            let axiosUrl = "/api/hcConsultMgt/newConsultReg";
+
+            if(_this.isupt){
+                axiosUrl = "/api/hcConsultMgt/uptConsultReg";
+            }
+
+            showLoader();
+
+            let headers = {			
+                "Content-Type": "multipart/form-data",
+                'x-requested-with' : 'AJAX'
+            };
+
+            // axios로 api 호출
+            axios({
+                method: 'post',
+                url: axiosUrl,
+                headers: headers,
+                data: formData,
+            }).then(function(response){
+                cmmAlert(response.data);
+            }).catch(function(error){
+                if(error){
+                    if(error.response.data.message === 'ERR_AJAX'){
+                        location.href = "/user/login";
+                        return;
+                    }else{
+                        cmmAlert(error.response.data.message);
+                    }			
+                }
+            }).finally(function(){
+                // loader close
+                _this.$emit("on-pop-close","");
+                _this.$emit("on-reload","");
+                closeLoader();
+            })
+
+            // axiosCall('multi', axiosUrl, formData, function(response) {                
+
+            //     cmmAlert(response.data);
+
+            //     _this.$emit("on-pop-close","");
+            //     _this.$emit("on-reload","");
+
+            // });          
+        },
+
+        // 세스코 주 담당자 목록
+        onChkCesco: function(e, obj){
+
+            if(!e.target.checked){                
+                obj.fs_sign_yn = 'N';
+                obj.fs_comp_sign_yn = 'N';
+            }
+
+            let _this = this;
+            let chkMngCesco = false;
+
+            _this.mngCescoList = [];
+            
+            _this.cescoList.forEach(cesco => {                
+                if(cesco.fs_chat_yn === 'Y'){
+                    _this.mngCescoList.push(cesco);
+                    if(cesco.user_id === _this.consultinfo.fs_mng_id) chkMngCesco = true;
+                }
+            });
+
+            if(!chkMngCesco) _this.consultinfo.fs_mng_id = ''; 
+        },
+
+        // 주 담당자 목록(정산 담당자 관련)
+        onChkBillManager: function(idx){
+            let _this = this;                
+            _this.managerlist.forEach((manager, index) => {
+                manager.fs_bill_mng_yn = 'N';
+                if(index === idx) manager.fs_bill_mng_yn = 'Y';
+            });
+        },
+
+        // 고객 주 담당자 목록
+        onChkManagerSub: function(e, obj){
+            if(!e.target.checked){                
+                obj.fs_sign_yn = 'N';
+                obj.fs_comp_sign_yn = 'N';
+            }
+            let _this = this;
+            _this.$emit("on-chk-manager");
+        },
+
+        onChkBillManagerSub: function(idx){
+            let _this = this;
+            _this.$emit("on-chk-bill-manager", idx);
+        },
+
+        // 협력사 삭제
+        setCusDel : function(cst_id){                
+            let _this = this;
+            
+            for(chkManager of _this.managerlist){
+                if(chkManager.fs_bill_mng_yn == 'Y' && chkManager.cst_id == cst_id){
+                    cmmAlert('정산 담당자가 포함된 협력사는 삭제 할 수 없습니다.');
+                    return false;
+                }
+            }
+
+            _this.$emit("set-cus-del",cst_id);            
+            _this.consultinfo.cst_mng_id = '';
+        },
+
+        chkChat: function(e, obj){            
+            if(obj.fs_chat_yn != 'Y'){                
+                e.target.checked = false;
+                cmmAlert('참여자의 경우만 서명이 가능 합니다.');
+            }
+        }
+    }
+})    
+
+var vue
+$(document).ready(function(){
+    vue = new Vue({
+        el : '#app',
+        data :{
+            userTpCd                : [[${session.userTpCd}]],
+            userDeptDiv             : [[${session.deptDiv}]],
+            isReadonly              : false,        // 수정 불가
+            isPartReadonly          : false,        // 부분 수정가능
+            isUpt                   : false,        // false : 신규, true : 수정
+            popProdList             : [],           // 팝업 상품 목록
+            gridMaxCnt              : 3,            // 그리드 내용 기본2줄
+
+            openNewConsultPop       : false,        // 신규등록 팝업            
+
+            // 통계 정보
+            consultSum              :{
+                salesAmount : 0,            // 매출액 합계
+                revenue : 0,                // 매입액 합계
+                mdTotal : 0,                // 계약MD 합계
+                mwtotal : 0                 // 수행MD 합계
+            },
+
+            // 컨설팅 정보
+            consultInfo : {
+                sys_id          : 'HC',         // 시스템 코드 HC
+                fs_no : '',                     // 컨설팅번호
+                reg_channel     : '02',         // 의뢰등록구분FS012
+                cst_id          : '',           // 고객사번호
+                cst_nm          : '',           // 고객사명
+                receive_date    : '',           // 접수일시
+                cst_mng_id      : '',           // 주담당자
+                cst_mng_nm      : '',           // 주담당자명
+                bill_cst_id     : '',           // 정산고객아이디
+                fs_mng_id       : '',           // 세스코담당자
+                fs_mng_nm       : '',           // 세스코담당자명
+                prod_cd         : '',           // 상품코드 FS017
+                prod_nm         : '',           // 상품명(제품명)
+                md_day          : 0,            // 햅섭사용용 MD DAY수
+                cont_no         : '',           // 계약번호
+                cont_id         : '',           // 계약자ID
+                sale_mng_id     : '',           // 매출사원ID
+
+                est_amt1        : 0,            // 계약금
+                est_amt2        : 0,            // 중도금
+                est_amt3        : 0             // 잔금
+            },
+
+            cusList             : [],           // 협력사 목록
+            managerList         : [],           // 담당자 목록
+            mngManagerList      : [],           // 주 담당자 목록
+
+            consultSearch   :{
+                p_type             : '1',               //조회구분
+                sys_id             : 'HC',              //시스템구분
+                cst_id             : '',                //고객사코드
+                rgstr_id           : '',                //입력자
+                food_type          : '',                //상품유형
+                product_name       : '',                //제품명
+                cst_mng_id         : '',                //담당자
+                fs_mng_id          : '',                //세스코담당자
+                start_date         : '',                //일자
+                end_date           : '',                //일자
+                fs_status_cd       : '',                //상태
+                cseco_dept_cd      : ''                 //지역본부
+            },
+
+            searchComboCes          : [],       //조회 세스코 담당자
+            searchComboStep         : [],       //조회 진행 단계
+            searchComboCus          : [],       //조회 고객사
+            searchComboFType        : [],       //조회 식품 유형 : FS018
+            searchComboProdype      : [],       //조회 상품명 : FS017
+            searchComboManager      : [],       //조회 담당자
+            searchComboDept         : [],       //조회 지역본부
+            searchDateType          : '',   //날짜 버튼 타입
+
+            openManagerSearchPop    : false,    // 협렵사 담당자 선택 팝업
+            managerPopType          : 'M',          // 담당자 조회 팝업 타입 M : 담당자 정보 가져오기, C : 고객사 정보만 가져오기
+
+            saleMngList         : [],       // 매출사원 목록
+            contMngList         : [],       // 계약사원 목록
+            
+        },
+
+        mounted : function(){
+            var _this = this;
+
+            $("#time05").click();       // 6개월
+
+            // 컨설팅 목록
+            _this.getMainList();
+
+            // 지역본부 목록
+            _this.getDeptList();
+
+            // 공통 코드 가져오기
+            let param = [                
+                {sys_cd:'HC',   cmm_cd:'FS020', arr_nm:'searchComboStep',      comboType:'all'}, // 조회 진행 단계 : FS020
+                {sys_cd:'HC',   cmm_cd:'FS018', arr_nm:'searchComboFType',      comboType:'all'}, // 조회 식품 유형 : FS018
+                {sys_cd:'HC',   cmm_cd:'FS017', arr_nm:'searchComboProdype',    comboType:'all'}, // 조회 상품명 : FS017
+                // searchComboDept         : [],       //조회 지역본부
+            ];
+
+            getCodeListForArrNm(param, _this);
+        },
+        
+        filters: {
+            currency: function (value) {
+                var num = new Number(value);
+                return num.toFixed(0).replace(/(\d)(?=(\d{3})+(?:\.\d+)?$)/g, "$1,")
+            }
+        },
+
+        methods:{
+            // 고객 주 담당자 목록
+            onChkManager: function(){           
+
+                let _this = this;
+                
+                let chkMngManager = false;
+
+                _this.mngManagerList = [];
+                _this.managerList.forEach(manager => {
+                    // if(manager.fs_chat_yn === 'Y' || manager.fs_bill_mng_yn === 'Y'){
+                    if(manager.fs_chat_yn === 'Y'){
+                        _this.mngManagerList.push(manager);
+                        if(manager.user_id === _this.consultInfo.cst_mng_id) chkMngManager = true;
+                    }
+                });
+
+                if(!chkMngManager) _this.consultInfo.cst_mng_id = '';
+
+            },
+
+            onChkBillManager: function(idx){
+
+                let _this = this;
+                _this.managerList.forEach((manager, index) => {
+                    manager.fs_bill_mng_yn = 'N';
+                    if(index === idx) manager.fs_bill_mng_yn = 'Y';
+                });
+
+                _this.onChkManager();
+
+            },           
+
+            // 기본 정보 초기화
+            onDefaultReset: function(){
+                let _this = this;
+                _this.consultInfo.sys_id          = 'HC';   // 시스템 코드 HC
+                _this.consultInfo.fs_no           = '';     // 컨설팅번호
+                _this.consultInfo.reg_channel     = '02';   // 의뢰등록구분FS012
+                _this.consultInfo.cst_id          = '';     // 고객사번호
+                _this.consultInfo.cst_nm          = '';     // 고객사명
+                _this.consultInfo.receive_date    = new Date().toISOString().substring(0,10);     // 접수일시
+                _this.consultInfo.cst_mng_id      = '';     // 주담당자
+                _this.consultInfo.cst_mng_nm      = '';     // 주담당자명
+                _this.consultInfo.bill_cst_id     = '';     // 정산고객아이디
+                _this.consultInfo.fs_mng_id       = '';     // 세스코담당자
+                _this.consultInfo.fs_mng_nm       = '';     // 세스코담당자명
+                _this.consultInfo.prod_cd         = '';     // 상품코드 FS017
+                _this.consultInfo.prod_nm         = '';     // 상품명(제품명)
+                _this.consultInfo.md_day          = 0;      // 햅섭사용용 MD DAY수
+                _this.consultInfo.cont_no         = '';     // 계약번호
+                _this.consultInfo.cont_id         = '';     // 계약ID
+                _this.consultInfo.sale_mng_id     = '';     // 매출사원 ID                
+                _this.consultInfo.est_amt1        = 0;      // 계약금
+                _this.consultInfo.est_amt2        = 0;      // 중도금
+                _this.consultInfo.est_amt3        = 0;      // 잔금 
+                _this.managerList                 = [];     // 담당자 목록
+            }, 
+
+            // 신규 컨설팅 등록
+            openNewConsulRegPop: function(){
+                let _this = this;
+
+                if(_this.userTpCd == '02' && _this.userDeptDiv == '01'){
+                    cmmAlert('사용 권한이 없습니다.');
+                    return false;
+                }
+
+                _this.onDefaultReset();
+                _this.isUpt = false;
+                _this.isReadonly = false;
+                _this.isPartReadonly = false;
+                _this.openNewConsultPop = true;
+                _this.mngManagerList = [];
+                _this.cusList = [];
+                _this.saleMngList = [];       // 매출사원 목록
+                _this.contMngList = [];       // 계약사원 목록
+            },
+
+            // 컨설팅 수정
+            openUptConsulRegPop: function(){
+                let _this = this;
+
+                if(_this.userTpCd == '02' && _this.userDeptDiv == '01'){
+                    cmmAlert('사용 권한이 없습니다.');
+                    return false;
+                }
+                
+                if(!_this.getConsultInfo()) return false;  
+                
+                let param = {
+                    sys_id : _this.consultInfo.sys_id,
+                    fs_no : _this.consultInfo.fs_no
+                }
+
+                axiosCall('get', '/api/hcConsultMgt/prodList', param, function(response) { 
+
+                    if(response.data.length > 0){
+                        _this.isUpt = true;
+                        _this.openNewConsultPop = true;
+                        _this.consultInfo = response.data[0];
+                        _this.popProdList = response.data;                        
+                    }else{
+                        cmmAlert('상품 정보가 없습니다.');
+                    }
+
+                    _this.getSalesConEmployeeList(_this.consultInfo.cst_id, 'CF06', "saleMngList"); // CF06 : 담당지사(매출사원)
+                    _this.getSalesConEmployeeList(_this.consultInfo.cst_id, 'CF02', "contMngList"); // CF02 : SD센터(계약사원)    
+                });
+
+                let mParam = { 
+                    sys_id : _this.consultInfo.sys_id ,
+                    fs_no : _this.consultInfo.fs_no
+                };
+                
+                _this.cusList = [];
+                _this.managerList = [];
+                _this.mngManagerList = [];
+                
+                // 담당자 목록 가져오기
+                axiosCall('get', '/api/hcConsultMgt/consultManagerList', mParam, function(mResponse) {
+                    
+                    mResponse.data.forEach(manager => {
+                                                        
+                        // 고객사 담당자
+                        if(manager.cst_id != '10000000'){                             
+                            _this.managerList.push(manager);
+                            if(manager.fs_chat_yn === 'Y'){
+                                _this.mngManagerList.push(manager);
+                            }
+                            let cusChk = true;
+                            _this.cusList.forEach(cus => {
+                                if(cusChk){
+                                    if(cus.cst_id === manager.cst_id) cusChk = false;
+                                }
+                            });
+                            if(cusChk){
+                                let cusInfo = {
+                                    cst_id : manager.cst_id,
+                                    cst_nm : manager.cst_nm, 
+                                    sys_id : _this.consultInfo.sys_id
+                                }
+                                _this.cusList.push(cusInfo);
+                            }
+                        }
+                        
+                    });
+
+                    _this.managerList.sort(function compare(a, b){
+                        return a.user_nm < b.user_nm ? -1 : 1;
+                    })
+
+                    let orderList = [];
+
+                    orderList = _this.managerList.filter((item)=> item.fs_chat_yn == 'Y');
+
+                    $.each(_this.managerList, function(index, item){
+                        if(item.fs_chat_yn != 'Y' && item.fs_bill_mng_yn == 'Y'){
+                            orderList.push(item);
+                        }
+                    })
+
+                    $.each(_this.managerList, function(index, item){
+                        if(item.fs_chat_yn != 'Y' && item.fs_bill_mng_yn != 'Y'){
+                            orderList.push(item);
+                        }
+                    })  
+                    
+                    _this.managerList = orderList;
+                    
+                });
+                
+            },
+
+
+            // 신규 컨설팅 등록 닫기
+            closeNewConsulRegPop: function(){
+                let _this = this;
+
+                _this.openNewConsultPop = false;
+            },
+
+            // 그리드 내용 가운데 정렬
+            setDivCenter: function(val, tag){
+
+                let inTag = "height:100%;";
+                inTag += "display:flex;";
+                inTag += "flex-direction:column;";
+                inTag += "justify-content:center;";
+                inTag += "align-items:center;";
+                inTag += "word-break:break-all;";
+                inTag += tag;
+
+                return "<div style='" + inTag + "'>" + val + "</div>";               
+            },
+
+            // 그리드 내용 오른쪽 정렬
+            setDivRight: function(val, tag){
+                let inTag = "height:100%;";
+                inTag += "display:flex;";
+                inTag += "flex-direction:column;";
+                inTag += "justify-content:center;";
+                inTag += "align-items:center;";
+                inTag += "margin-right: 4px; float: right;";           
+                inTag += tag;
+
+                return "<div style='" + inTag + "'>" + val + "</div>";
+            },
+
+            // 그리드 줄 높이
+            setGridHeight: function(){
+                $('#consultGrid').jqxGrid({ rowsheight: this.gridMaxCnt * 24});
+            },
+
+            // 담당자 정보 가져오기(담당자 만)
+            onGetManagerList: function(data){
+
+                let _this = this;
+
+                _this.managerList = [];
+                _this.cusList = [];
+                _this.consultInfo.cst_id = "";
+                _this.consultInfo.cst_nm = "";                
+
+                // 담당자 목록 가져오기
+                let param = {
+                    p_type : '1',
+                    sys_id : _this.consultInfo.sys_id,
+                    fs_no : _this.consultInfo.fs_no,
+                    cst_id : data.cst_id
+                }
+
+                axiosCall('get', '/api/hcConsultMgt/managerList', param, function(response) {
+                    if(response.data.length > 0){
+                        let dataManager = response.data;
+                        _this.mngManagerList = [];
+                        dataManager.forEach(manager => {
+                            if(!_this.isUpt){
+                                manager.fs_bill_mng_yn = "N";
+                                manager.fs_chat_yn = "N";
+                            }else{
+                                if(manager.fs_bill_mng_yn === 'Y' || manager.fs_chat_yn === 'Y')
+                                _this.mngManagerList.push(manager);
+                            }
+                            _this.managerList.push(manager);
+
+                        });
+
+                        _this.consultInfo.cst_id = data.cst_id;
+                        _this.consultInfo.cst_nm = data.cst_nm;
+                        // 협력사 추가
+                        _this.cusList.push(data);
+
+                        _this.consultInfo.sale_mng_id = '';
+                        _this.consultInfo.cont_id = '';
+                        
+                        _this.getSalesConEmployeeList(data.cst_id, 'CF06', "saleMngList"); // CF06 : 담당지사(매출사원)
+                        _this.getSalesConEmployeeList(data.cst_id, 'CF02', "contMngList"); // CF02 : SD센터(계약사원)                        
+                        
+                    }else{
+                        _this.consultInfo.cst_mng_id = '';
+                        _this.consultInfo.sale_mng_id = '';
+                        _this.consultInfo.cont_id = '';
+                        _this.saleMngList = [];       // 매출사원 목록
+                        _this.contMngList = [];       // 계약사원 목록
+                        cmmAlert('담당자 정보가 없습니다.');
+                    }
+                });
+            },
+
+            // 매출 / 계약 사원 목록 
+            getSalesConEmployeeList: function(cst_id, centercd, arrList){                
+                let _this = this;
+                let param = {
+                    sys_id : 'HC',
+                    cst_id : cst_id,
+                    centercd : centercd
+                }
+                axiosCall('get', '/api/hcConsultMgt/salesConEmployee', param, function(response) {                    
+                    _this[arrList] = response.data;                    
+                    if(arrList == 'saleMngList'){
+                        if(_this[arrList].length > 0 && _this.consultInfo.sale_mng_id == ''){
+                            _this.consultInfo.sale_mng_id = _this[arrList][0].user_num;
+                        }
+                    }
+                });
+            },
+
+            // 지역본부 목록 가져오기
+            getDeptList: function(){
+                let _this = this;
+                // userTpCd : 03(관리자) 이면 2: 모두,  아니면 1: 소속 지역본부만
+                axiosCall('get', '/api/hcConsultMgt/deptList', {p_type:_this.userTpCd === '03' ? '2' : '1'}, function(response) {
+                    _this.searchComboDept = response.data;  // searchComboDept <= 배열 선언 후 배열에 목록 받기
+                });
+            },
+
+            // 선택 컨설팅 정보
+            getConsultInfo: function(){
+                let _this = this;
+                let chkCnt = 0;
+                let selConsultInfo = '';
+                         
+                var rowDatas = $("#consultGrid").jqxGrid('getrows');
+                $.each(rowDatas, function(i, obj) {                    
+                    if(obj.check == true){
+                        chkCnt++;
+                        selConsultInfo = obj;
+                    }
+
+                    if(chkCnt > 1){
+                        return false;
+                    }
+                })
+
+                if(chkCnt > 1){
+                    cmmAlert('컨설팅 선택은 하나만 가능 합니다.');
+                    return false;
+                }
+
+                if(chkCnt < 1){
+                    cmmAlert('컨설팅을 선택해 주세요.');
+                    return false;
+                }                
+
+                let arrBill = [];
+
+                _this.isPartReadonly = false;
+
+                if(selConsultInfo.fs_bill_item === null){
+                    arrBill.push("N");
+                }else{
+                    arrBill = selConsultInfo.fs_bill_item.split('/');
+                }     
+                
+                // console.log('selConsultInfo.mw_day > 0 : ' + selConsultInfo.mw_day);
+                // console.log('arrBill[0].toUpperCase() === Y : ' + arrBill[0].toUpperCase());
+                // console.log('selConsultInfo.complet_tp_cd !== 04 : ' + selConsultInfo.complet_tp_cd);
+                // console.log('selConsultInfo.bill_amt > 0 : ' + selConsultInfo.bill_amt);
+                // console.log('selConsultInfo.md_status_cd !- 01 : ' + selConsultInfo.md_status_cd);
+                
+                if(selConsultInfo.mw_day > 0 || arrBill[0].toUpperCase() === 'Y' || selConsultInfo.complet_tp_cd !== '01' || parseInt(selConsultInfo.bill_amt) > 0 || selConsultInfo.md_status_cd != '01'){
+                    let viewMsg = "진행중인";
+                    if(selConsultInfo.mw_day > 0){
+                        viewMsg = "수행중인";
+                    }else if(parseInt(selConsultInfo.bill_amt) > 0) {
+                        viewMsg = "주문서가 발행된";
+                    }else if(arrBill[0].toUpperCase() === 'Y') {
+                        viewMsg = "세금계산서가 발행된";
+                    }else{
+                        viewMsg = selConsultInfo.complet_stt + '인';
+                    }
+                    // cmmAlert( viewMsg + ' 컨설팅은 수정이 불가능 합니다.');
+                    _this.isReadonly = true;
+                    _this.isPartReadonly = true;
+                }else{
+                    _this.isReadonly = false;
+                }
+
+                _this.consultInfo.fs_no = selConsultInfo.fs_no;
+
+                return true;
+            },  
+            
+            // 날짜 체크
+            chkDate: function(val){
+
+                let result = true;
+                let _this = this;
+
+                try {
+
+                    if(_this.consultSearch.start_date == '' && _this.consultSearch.end_date == ''){
+                        _this.searchDateType = 'all';
+                    }
+
+                    if(_this.searchDateType !== 'all'){
+                        let dataformatRegexp = /([0-9]{4}-[0-9]{2}-[0-9]{2})/;
+
+                        if ( !dataformatRegexp.test(val) ) {
+                            cmmAlert("날짜는 yyyy-mm-dd 형식으로 입력해주세요.");
+                            return false;
+                        }
+
+                        let date = val.split("-");
+                        let y = parseInt(date[0], 10),
+                            m = parseInt(date[1], 10),
+                            d = parseInt(date[2], 10);
+                        
+                        let datatimeRegexp = /^(?=\d)(?:(?:31(?!.(?:0?[2469]|11))|(?:30|29)(?!.0?2)|29(?=.0?2.(?:(?:(?:1[6-9]|[2-9]\d)?(?:0[48]|[2468][048]|[13579][26])|(?:(?:16|[2468][048]|[3579][26])00)))(?:\x20|$))|(?:2[0-8]|1\d|0?[1-9]))([-.\/])(?:1[012]|0?[1-9])\1(?:1[6-9]|[2-9]\d)?\d\d(?:(?=\x20\d)\x20|$))?(((0?[1-9]|1[012])(:[0-5]\d){0,2}(\x20[AP]M))|([01]\d|2[0-3])(:[0-5]\d){1,2})?$/;
+                        result = datatimeRegexp.test(d+'-'+m+'-'+y);    
+                    }                   
+                } catch (err) {                    
+                    result = false;
+                }
+
+                if(!result)
+                    cmmAlert('날짜 형식이 정확하지 않습니다.');
+
+                return result;
+
+            },
+
+            // 조회
+			getMainList : function() {
+                let _this = this;  
+                
+                if(!_this.chkDate(_this.consultSearch.start_date))
+                    return false;
+                if(!_this.chkDate(_this.consultSearch.end_date))
+                    return false; 
+
+                if(_this.userTpCd === '03'){
+                    _this.consultSearch.p_type = '2'
+                }
+
+                axiosCall('get', '/api/hcConsultMgt/getList', _this.consultSearch, function(res){                    
+                    _this.consultingList = res.data;
+                    _this.drawTable();
+                });
+            },            
+
+            // jqxgrid 생성 및 bind
+            drawTable : function() {
+                let _this = this;
+
+                var consultSource = {
+                    datatype: "json", // json 형태의 데이터를 셋팅할 것이고. // array
+                    datafields: [     // 각 필드의 이름과 타입은 datafields에 마찬가지로 json 형태이다.
+
+                        { name: 'sys_id',           type: 'string'},        // 
+                        { name: 'cst_nm',           type: 'string'},        // 고객사명
+                        { name: 'fs_no',            type: 'string'},		// 컨설팅번호
+                        { name: 'fs_seq',           type: 'string'},		// 컨설팅순번합계
+                        { name: 'prod_cd',          type: 'string'},        // 상품코드
+                        { name: 'prod_nm',          type: 'string'},        // 상품명  
+                        { name: 'prod_tp_nm',       type: 'string'},		// 상품유형명 
+                        { name: 'corp_nm',          type: 'string'},        // 참여자명
+                        { name: 'cst_mng_id',       type: 'string'},		// 고객담당자
+                        { name: 'cst_mng_nm',       type: 'string'},        // 고객담당자명
+                        { name: 'cst_mng_mobile',   type: 'string'},        // 담당자연락처
+                        { name: 'bill_cst_id',      type: 'string'},	    // 정산거래처 :  신청시 등록시 넣는다.
+                        { name: 'bill_cst_nm',      type: 'string'},        // 정산거래처명
+                        { name: 'receive_date',     type: 'string'},	    // 접수일자
+                        { name: 'tax_bill_id',      type: 'string'},        // 정산담당자
+                        { name: 'tax_bill_nm',      type: 'string'},        // 정산담당자명
+                        { name: 'tax_bill_email',   type: 'string'},        // 정산담당자이메일
+                        { name: 'fs_bill_item',     type: 'string'},        // 세금계산서 발행여부/청구번호
+                        { name: 'fs_bill_no',       type: 'string'},        // 청구번호
+                        { name: 'fs_mng_id',        type: 'string'},		// 세스코담당자
+                        { name: 'cst_cesco_mng_nm', type: 'string'},        // 세스코담당자명
+                        { name: 'cseco_dept_cd',    type: 'string'},        // 지역본부코드
+                        { name: 'cseco_dept_nm',    type: 'string'},        // 지역본부명
+                        { name: 'md_day',           type: 'string'},        // 계약일수
+                        { name: 'mw_day',           type: 'string'},        // 진행일수
+                        { name: 'fs_status_cd',     type: 'string'},        // 진행상태
+                        { name: 'fs_status_nm',     type: 'string'},        // 진행상태명
+                        { name: 'mem_cnt',          type: 'string'},        // 참여자수
+                        { name: 'est_amt',          type: 'number'},        // 견적금액
+                        { name: 'bill_ar_amt',      type: 'number'},        // 납입금액(수금금액)
+                        { name: 'bill_amt',         type: 'string'},        // 청구금액  
+                        { name: 'bill_net_amt',     type: 'string'},        // 미청구금액  
+                        { name: 'mdfr_dt',          type: 'string'},        // 수정일시 
+                        { name: 'complt_yn',        type: 'string'},        // 완료여부
+                        { name: 'cont_yn',          type: 'string'},        // 동의여부		    
+                        { name: 'cont_no',          type: 'string'},        // 계약번호
+                        { name: 'cont_id',          type: 'string'},        // 계약사원번호   
+                        { name: 'sale_mng_id',      type: 'string'},        // 매출사원번호
+                        { name: 'cont_nm',          type: 'string'},        // 계약자명
+                        { name: 'complet_tp_cd',    type: 'string'},        // 완료확인서 상태
+                        { name: 'sign_cnt',         type: 'string'},        // 싸인 수
+                        { name: 'complet_stt',      type: 'string'},        // 완료확인서 상태 1:작성중, 2:확인요청, 3:완료
+                        { name: 'md_status_cd',     type: 'string'}         // Mday 상태
+                        
+                    ],  
+                    localdata: _this.consultingList, // 위에서 셋팅해놓은 data를 localdata에 담아준다.                    
+                };
+
+                var consultDataAdapter = new $.jqx.dataAdapter(consultSource);                
+                
+                $('#consultGrid').jqxGrid('clearselection');
+                $("#consultGrid").jqxGrid({  
+                    width               :   '100%',
+                    autoheight          :   true,
+                    source              :   consultDataAdapter,
+                    selectionmode       :   'singlerow',
+                    pageable			:   true,
+                    pagermode			:   'simple',
+                    pagesize			:   5,
+                    pagerbuttonscount	:   5,
+                    columnsheight       :   60,
+                    rowsheight          :   60,
+                    editmode            :   'selectedrow',
+                    localization        :   {emptydatastring:'해당 자료가 존재하지 않습니다.'},
+                    editable            :   true,
+                    columns: [
+                        { 
+                            text: '', datafield: 'check', columntype: 'checkbox', width: 30 
+                        },
+                        {
+                            text: 'No', sortable: false, filterable: false, editable: false,width: '3%',
+                            groupable: false, draggable: false, resizable: false,
+                            datafield: '', columntype: 'number', align:'center',
+                            cellsrenderer: function (row, column, value) {
+                                return _this.setDivCenter((value + 1));
+                            },
+                        },
+                        { 
+                            text : '고객사 / 컨설팅번호',datafield: 'fs_no', editable: false, cellsalign: 'center', align : 'center', width : '11%'
+                            , renderer: function () {
+                                return _this.setDivCenter('&nbsp;&nbsp;&nbsp;고객사 <br />컨설팅번호');
+                            }                            
+                            , cellsrenderer: function (row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+                                return _this.setDivCenter(rowdata.cst_nm + "<br>" + value);
+                            }
+                        },
+                        { 
+                            text : '상품유형',datafield: 'prod_tp_nm', cellsalign: 'center', align : 'center', width : '5%', editable: false
+                            , cellsrenderer: function (row, column, value) {
+
+                                let arrVal = value.split(',');
+                                let viewVal = '';
+
+                                arrVal.forEach((element, index) => {
+                                    if(index != 0)
+                                        viewVal += "<br>";
+                                    viewVal += element;
+
+                                    _this.gridMaxCnt = _this.gridMaxCnt < (index + 1) ? (index + 1) : _this.gridMaxCnt;
+                                });                                
+
+                                return _this.setDivCenter(viewVal);
+                            },
+                        },
+                        { 
+                            text : '고객사담당자',datafield: 'cst_mng_nm', cellsalign: 'center', align : 'center', width : '6%', editable: false
+                            , renderer: function () {
+                                return _this.setDivCenter('고객사 <br />담당자');
+                            }
+                            , cellsrenderer: function (row, column, value) {
+                                return _this.setDivCenter(value);
+                            }
+                        },
+                        { 
+                            text : '상품명',datafield: 'prod_nm', cellsalign: 'center', align : 'center', width : '7%', editable: false
+                            , cellsrenderer: function (row, column, value) {
+                                return _this.setDivCenter(value);
+                            }
+                        },
+
+                        { 
+                            text : '계산서담당자',datafield: 'tax_bill_nm', cellsalign: 'center', align : 'center', width : '6%', editable: false
+                            , renderer: function () {
+                                return _this.setDivCenter('계산서 <br />담당자');
+                            }
+                            , cellsrenderer: function (row, column, value) {
+                                return _this.setDivCenter(value);
+                            }
+                        },
+                        { 
+                            text : '정산담당자이메일',datafield: 'tax_bill_email', cellsalign: 'center', align : 'center', width : '14.5%', editable: false
+                            , cellsrenderer: function (row, column, value) {
+                                return _this.setDivCenter(value);
+                            }
+                        },
+                        { 
+                            text : '접수일(계약일)',datafield: 'receive_date', cellsalign: 'center', align : 'center', width : '7%' , editable: false                           
+                            , renderer: function () {                                
+                                return _this.setDivCenter('&nbsp;&nbsp;&nbsp;접수일 <br />최종처리일');
+                            }
+                            , cellsrenderer: function (row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+                                return _this.setDivCenter(value + "<br>" + rowdata.mdfr_dt.substring(0,10), 'font-size:12px;');
+                            }
+                        },
+                        { 
+                            text : '지역본부', datafield: 'cseco_dept_nm', cellsalign: 'center', align : 'center', width : '8%', editable: false
+                            , cellsrenderer: function (row, column, value) {
+                                return _this.setDivCenter(value);
+                            }
+                        },
+
+                        { 
+                            text : '세스코담당자', datafield: 'cst_cesco_mng_nm', cellsalign: 'center', align : 'center', width : '7%', editable: false
+                            , renderer: function () {
+                                return _this.setDivCenter('세스코 <br />담당자');
+                            }
+                            , cellsrenderer: function (row, column, value) {
+                                return _this.setDivCenter(value);
+                            }
+                        },
+                        { 
+                            text : '계약MD', datafield: 'md_day', cellsalign: 'center', align : 'center', width : '3%', aggregates: ['sum'], editable: false
+                            , renderer: function () {
+                                return _this.setDivCenter('계약 <br />MD');
+                            }
+                            , cellsrenderer: function (row, column, value) {
+                                return _this.setDivCenter(value);
+                            }
+                        },
+                        { 
+                            text : '수행MD', datafield: 'mw_day', cellsalign: 'center', align : 'center', width : '3%', aggregates: ['sum'], editable: false
+                            , renderer: function () {
+                                return _this.setDivCenter('수행 <br />MD');
+                            }
+                            , cellsrenderer: function (row, column, value) {
+                                return _this.setDivCenter(value);
+                            }
+                        },
+                        { 
+                            text : '진행단계', datafield: 'fs_status_nm', cellsalign: 'center', align : 'center', width : '5%', editable: false
+                            , cellsrenderer: function (row, column, value) {
+                                return _this.setDivCenter(value);
+                            }
+                        },
+                        { 
+                            text : '매출액 / 수금액', cellsalign: 'center', align : 'center', width : '7%', editable: false
+                            , renderer: function () {
+                                return _this.setDivCenter('매출액(VAT제외) <br /><span style="color:blue;">수금액</span>', 'font-size:12px;');
+                            }
+                            , cellsrenderer: function (row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+                                return _this.setDivRight(
+                                    rowdata.est_amt.toLocaleString('ko-KR') + "<br>"
+                                    + "<span style='width:100%;color:blue;'>" + rowdata.bill_ar_amt.toLocaleString('ko-KR') + "</span>", 'text-align: right;');
+                            }
+                        },                        
+                        { 
+                            text : '완료확인서',datafield: 'complet_tp_cd', cellsalign: 'center', align : 'center', width : '5%', editable: false
+                            , renderer: function () {                                
+                                return _this.setDivCenter('&nbsp;&nbsp;완료 <br />확인서');
+                            }
+                            , cellsrenderer: function (row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+
+                                // return _this.setDivCenter('<span>' + rowdata.complet_stt + '<br>(' + rowdata.sign_cnt + '/' + rowdata.mem_cnt  +  ')' + '</span>');
+                                return _this.setDivCenter('<span>' + rowdata.complet_stt + '</span>');
+
+                                // if(value === '02' || value === '03'){
+                                //     return _this.setDivCenter('<span class="a-link">' + rowdata.complet_stt + '</span>', 'cursor:pointer;');
+                                // }else{
+                                //     return _this.setDivCenter('<span class="a-link">' + rowdata.complet_stt + '</span>', 'cursor:pointer;');
+                                // }
+                            },
+                        },
+                        { text : 'est_amt',     datafield: 'est_amt',      hidden : true, aggregates: ['sum'], editable: false },                        
+                        { text : 'bill_ar_amt', datafield: 'bill_ar_amt',  hidden : true, aggregates: ['sum'], editable: false },      
+                    ]                 
+                });
+
+                _this.setGridHeight();
+
+                $("#consultGrid").off('pagechanging').on('pagechanging', function (event) {
+
+                    _this.gridMaxCnt = 3;
+                    let pagenum = event.args.pagenum;
+                    let pagesize = event.args.pagesize;
+
+                    let rows = $('#consultGrid').jqxGrid('getrows');
+                    
+                    $.each(rows, function(idx, obj){
+                        if(idx > pagenum * pagesize - 1 && idx <= (pagenum + 1) * pagesize - 1 && obj.prod_tp_nm != null){
+                            let cntHeight = obj.prod_tp_nm.split(',').length;
+                            _this.gridMaxCnt = _this.gridMaxCnt < cntHeight ? cntHeight : _this.gridMaxCnt;
+                        }    
+                        
+                        obj.check = false;
+                    });
+
+                    _this.setGridHeight();
+                });
+                
+                // $("#consultGrid").off('cellclick').on('cellclick', function (event) {
+                //     // event arguments.
+                //     var args = event.args;
+                //     // row's data.
+                //     var rowData = args.row.bounddata;
+                //     // column data field.
+                //     var dataField = event.args.datafield;
+                    
+                //     if(dataField === 'cont_yn'){
+
+                //         let param = "custCd=H22I004246";
+                //         param += "&custClsNm=가정집";
+                //         param += "&contrDocNo=C5597320221028170957";
+                //         param += "&contractStatusCd=014007";
+                //         param += "&userID=";
+
+                //         // window.open("https://e-contract.cesco.co.kr/info/cesnetPreview?" + param);
+
+                //         window.open("https://e-contract.cesco.co.kr/info/cesnetPreview?custCd=H22I004246&custClsNm=가정집&contrDocNo=C5597320221028170957&contractStatusCd=014007&userID=")
+                //     }
+
+                //     if(dataField === 'complet_tp_cd'){
+                //         // if(rowData.complet_tp_cd === '02' || rowData.complet_tp_cd === '03' ){
+                //             window.localStorage.setItem('consultGridRow',JSON.stringify(_this.consultingList[rowData.boundindex]));
+                //             openCmmPopup('hcComplete', 'hcCompleteDiv', null);
+                //         // }
+                //     }
+                // });
+
+                // // gird 합계                
+                if(_this.consultingList.length > 0){
+                    _this.consultSum.salesAmount    = $("#consultGrid").jqxGrid('getcolumnaggregateddata', 'est_amt', ['sum']).sum.toLocaleString('ko-KR');
+                    _this.consultSum.revenue        = $("#consultGrid").jqxGrid('getcolumnaggregateddata', 'bill_ar_amt', ['sum']).sum.toLocaleString('ko-KR');
+                    _this.consultSum.mdTotal        = $("#consultGrid").jqxGrid('getcolumnaggregateddata', 'md_day', ['sum']).sum;
+                    _this.consultSum.mwtotal        = $("#consultGrid").jqxGrid('getcolumnaggregateddata', 'mw_day', ['sum']).sum;
+                }else{
+                    _this.consultSum.salesAmount    = 0;
+                    _this.consultSum.revenue        = 0;
+                    _this.consultSum.mdTotal        = 0;
+                    _this.consultSum.mwtotal        = 0;
+
+                }
+                
+            },
+
+            onChangeStartDate: function(val) { 
+                this.searchDateType = 'keyup';
+                this.consultSearch.start_date = val;
+                this.setSearchInfo();
+            },
+
+            onChangeEndDate: function(val) {
+                this.searchDateType = 'keyup';
+                this.consultSearch.end_date = val;
+                this.setSearchInfo();
+            },
+
+            setPeriod: function(e, val) {
+                let _this = this;
+                _this.searchDateType = val;
+                $('.but-tiem').removeClass('mini-btns-togger')
+                e.target.setAttribute('class','but-tiem mini-btns-togger')
+                var periodDate = getPeriod(val);
+                _this.consultSearch.start_date = periodDate.startDt;
+                _this.consultSearch.end_date = periodDate.endDt;
+                _this.setSearchInfo();
+			},
+
+            // 조회기간에 따른 조회 조건 변경
+            setSearchInfo: function(){
+
+                let _this = this;
+                let cus_p_type = '07';
+                let ces_p_type = '08';
+
+                if(_this.userTpCd === '03'){
+                    cus_p_type = '06';
+                    ces_p_type = '04';
+                }
+
+                let param = [
+                    {cmm_cd:'cst', p_type:cus_p_type, 
+                        p_parm4:_this.consultSearch.start_date,p_parm5:_this.consultSearch.end_date,arr_nm:'searchComboCus', comboType:'all'}, //고객사 구분
+                    {cmm_cd:'mng', p_type:ces_p_type, 
+                        p_parm4:_this.consultSearch.start_date,p_parm5:_this.consultSearch.end_date, 
+                        arr_nm:'searchComboCes', comboType:'all'}, // 세스코 담당자
+                ];
+
+                _this.consultSearch.manager = '';
+                _this.consultSearch.customer = '';
+                _this.consultSearch.cesco_person_in_charge = '';
+
+                getCodeListForArrNm(param, _this);
+            },
+
+            // 접수일
+            onChangeReceiveDate: function(val) {
+                let _this = this;
+                _this.consultInfo.receive_date = val;
+            },   
+            
+            // 협렵사 담당자 선택 팝업
+            openManagerSearch : function(type){
+                let _this = this;
+                _this.managerPopType = type;
+                _this.openManagerSearchPop = true;
+            },
+
+            // 협렵사 담당자 선택 팝업 닫기
+            closeManagerSearchPop : function(){
+                this.openManagerSearchPop = false;
+            },            
+
+            setManagerInfo : function(data){
+
+                let _this = this;
+                let chkOverlap = false;
+
+                _this.cusList.forEach(cus => {
+                    if(cus.cst_id === data.cst_id) chkOverlap = true;
+                });
+
+                if(chkOverlap){
+                    cmmAlert('이미 등록된 협력사 입니다.');
+                    return false;
+                }
+
+                let param = {
+                    p_type : '1',
+                    sys_id : _this.consultInfo.sys_id,
+                    fs_no  : _this.consultInfo.fs_no,
+                    cst_id : data.cst_id
+                }
+
+                // 담당자 추가
+                axiosCall('get', '/api/hcConsultMgt/managerList', param, function(response) {
+                    let dataManager = response.data;
+
+                    dataManager.forEach(manager => {
+                        if(_this.openNewConsultPop){
+                            manager.fs_bill_mng_yn = "N";
+                            manager.fs_chat_yn = "N";
+                        }
+                        _this.managerList.push(manager);
+                    });
+
+                    // 협력사 추가
+                    _this.cusList.push(data);
+                });
+
+            },
+
+            // 고객사 정보 넣기
+            setCuscomInfo : function(data){
+                let _this = this;
+                _this.consultComInfo.cst_id = data.cst_id;
+                _this.consultComInfo.cst_nm = data.cst_nm;
+
+                _this.managerList = [];
+                _this.cusList = [];
+                _this.setManagerInfo(data);
+            },  
+            
+            // 담당자 삭제
+            setCusDel : function(cst_id){
+                let _this = this;
+                _this.cusList = _this.cusList.filter((item,index)=> item.cst_id != cst_id);
+                _this.managerList = _this.managerList.filter((item,index)=> item.cst_id != cst_id);
+                _this.mngManagerList = _this.mngManagerList.filter((item,index)=> item.cst_id != cst_id)
+            },
+
+            delConsult:function(){
+                
+                let _this = this;
+                let chkCnt = 0;
+                let delFs_no = '';
+                let mw_day = 0;
+
+                var rowDatas = $("#consultGrid").jqxGrid('getrows');
+                $.each(rowDatas, function(i, obj) {
+                    if(obj.check == true){
+                        chkCnt++;
+                        mw_day = obj.mw_day;
+                        delFs_no = obj.fs_no;
+                    }
+
+                    if(chkCnt > 1){
+                        return false;
+                    }
+                })
+
+                if(chkCnt > 1){
+                    cmmAlert('컨설팅 선택은 하나만 가능 합니다.');
+                    return false;
+                }
+
+                if(chkCnt < 1){
+                    cmmAlert('컨설팅을 선택해 주세요.');
+                    return false;
+                }
+
+                if(parseInt(mw_day) > 0){
+                    cmmAlert('수행MD가 1 이상인 컨설팅은<br>삭제가 불가능 합니다.');
+                    return false;
+                }
+                
+                cmmConfirm("[ "+delFs_no+" ] 컨설팅을 삭제 하시겠습니까?", function() {                    
+                    axiosCall('post', '/consult/api/consultDel', {fs_no:delFs_no}, function(response) {
+                        cmmAlert(response.data);
+                        _this.getMainList();
+                    });
+                });                
+            },
+            onDownloadXls: function(){
+                console.log('엑셀 다운');
+                let _this = this;
+
+                //  목록 가져오기
+                axiosCall('get', '/api/hcConsultMgt/consultListXls', _this.consultSearch, function(response) {
+                    let data = response.data;  
+                                        
+                    let source =  {  
+                        datatype: "json",                         
+                        datafields: [ 
+                            { name : 'sys_id',              type : 'string' },
+                            { name : 'cst_id',              type : 'string' },
+                            { name : 'cst_nm',               type : 'string' },
+                            { name : 'fs_no',               type : 'string' },
+                            { name : 'fs_seq',              type : 'string' },
+                            { name : 'prod_cd',             type : 'string' },
+                            { name : 'prod_nm',             type : 'string' },
+                            { name : 'corp_nm',             type : 'string' },
+                            { name : 'corp_id',             type : 'string' },
+                            { name : 'cst_mng_id',          type : 'string' },
+                            { name : 'cst_mng_nm',          type : 'string' },
+                            { name : 'bill_cst_id',         type : 'string' },
+                            { name : 'bill_cst_nm',         type : 'string' },
+                            { name : 'receive_date',        type : 'string' },
+                            { name : 'tax_bill_id',         type : 'string' },
+                            { name : 'tax_bill_nm',         type : 'string' },
+                            { name : 'tax_bill_email',      type : 'string' },
+                            { name : 'fs_mng_id',           type : 'string' },
+                            { name : 'cst_cesco_mng_nm',    type : 'string' },
+                            { name : 'cseco_dept_cd',       type : 'string' },
+                            { name : 'cseco_dept_nm',       type : 'string' },
+                            { name : 'md_day',              type : 'string' },
+                            { name : 'md_date',             type : 'string' },
+                            { name : 'mw_day',              type : 'string' },
+                            { name : 'fs_status_cd',        type : 'string' },
+                            { name : 'fs_status_nm',        type : 'string' },
+                            { name : 'md_status_cd',        type : 'string' },
+                            { name : 'md_status_nm',        type : 'string' },
+                            { name : 'chat_mem_cnt',        type : 'string' },
+                            { name : 'est_amt',             type : 'number' },
+                            { name : 'bill_ar_amt',         type : 'number' },
+                            { name : 'bill_amt',            type : 'number' },
+                            { name : 'bill_net_amt',        type : 'number' },
+                            { name : 'mdfr_dt',             type : 'string' },
+                            { name : 'complt_yn',           type : 'string' },
+                            { name : 'cont_id',             type : 'string' },
+                            { name : 'cont_nm',             type : 'string' },
+                            { name : 'sale_mng_id',         type : 'string' },
+                            { name : 'sale_mng_nm',         type : 'string' },
+                            { name : 'complet_tp_cd',       type : 'string' },
+                            { name : 'complet_stt',         type : 'string' },
+                            { name : 'dept_nm',             type : 'string' },
+                            { name : 'con_complet_date',    type : 'string' },
+                            { name : 'con_fs_mng_id',       type : 'string' },
+                            { name : 'con_cesco_mng_nm',    type : 'string' },
+                            { name : 'prod_tp_nm',          type : 'string' },
+                            { name : 'tot_md_day',          type : 'string' },
+                        ],	
+                        localdata: data 
+                    };
+
+                    let dataAdapter = new $.jqx.dataAdapter(source);
+
+                    $('#jqxXls').jqxGrid('clearselection');
+                    $("#jqxXls").jqxGrid({                        
+                        width               : '100%',
+                        height				: 	0,
+                        source              :   dataAdapter,                            
+                        localization        : { emptydatastring:'해당 자료가 존재하지 않습니다.' },
+                        columns: [
+                        
+                            {   width: 160, datafield : 'cst_nm',                cellsalign: 'center', align : 'center', text : '고객사' },
+                            {   width: 120, datafield : 'fs_no',                cellsalign: 'center', align : 'center', text : '컨설팅번호' },
+                            {   width: 160, datafield : 'prod_nm',                cellsalign: 'center', align : 'center', text : '상품명' },
+                            {   width: 160, datafield : 'prod_tp_nm',                cellsalign: 'center', align : 'center', text : '상품유형' },                            
+                            {   width: 100, datafield : 'cst_mng_nm',                cellsalign: 'center', align : 'center', text : '고객담당자' },
+                            
+                            {   width: 120, datafield : 'cst_cesco_mng_nm',     cellsalign: 'center', align : 'center', text : '수행일지 작성자' },
+                            {   width: 140, datafield : 'cseco_dept_nm',        cellsalign: 'center', align : 'center', text : '수행일지 작성자부서' },
+                            {   width: 60, datafield : 'tot_md_day',               cellsalign: 'center', align : 'center', text : '계약MD' },
+                            {   width: 60, datafield : 'md_day',               cellsalign: 'center', align : 'center', text : '수행일' },
+                            {   width: 100, datafield : 'md_date',              cellsalign: 'center', align : 'center', text : '수행일자' },
+                            {   width: 60, datafield : 'mw_day',               cellsalign: 'center', align : 'center', text : '수행완료' },
+                            {   width: 100, datafield : 'fs_status_nm',         cellsalign: 'center', align : 'center', text : '진행상태' },
+                            {   width: 100, datafield : 'md_status_nm',         cellsalign: 'center', align : 'center', text : '수행일지 상태' },
+                            {   width: 100, datafield : 'chat_mem_cnt',         cellsalign: 'center', align : 'center', text : '참여자수' },
+                            {   width: 100, datafield : 'est_amt',              cellsalign: 'center', align : 'center', text : '견적금액', cellsformat: 'd' },
+                            {   width: 100, datafield : 'bill_ar_amt',          cellsalign: 'center', align : 'center', text : '납입금액(수금금액)', cellsformat: 'd' },
+                            {   width: 100, datafield : 'bill_amt',             cellsalign: 'center', align : 'center', text : '청구금액', cellsformat: 'd' },
+                            {   width: 100, datafield : 'bill_net_amt',         cellsalign: 'center', align : 'center', text : '미청구금액', cellsformat: 'd' },
+                            {   width: 140, datafield : 'mdfr_dt',              cellsalign: 'center', align : 'center', text : '수정일시' },
+                            {   width: 100, datafield : 'complt_yn',            cellsalign: 'center', align : 'center', text : '완료여부' },
+                            {   width: 100, datafield : 'cont_id',              cellsalign: 'center', align : 'center', text : '계약사원번호' },
+                            {   width: 100, datafield : 'cont_nm',              cellsalign: 'center', align : 'center', text : '계약자명' },
+                            {   width: 100, datafield : 'sale_mng_id',          cellsalign: 'center', align : 'center', text : '매출사원ID' },
+                            {   width: 100, datafield : 'sale_mng_nm',          cellsalign: 'center', align : 'center', text : '매출사원' },
+                            {   width: 100, datafield : 'complet_stt',          cellsalign: 'center', align : 'center', text : '완료확인서 상태' },
+                            {   width: 100, datafield : 'dept_nm',              cellsalign: 'center', align : 'center', text : '지역본부' },
+                            {   width: 100, datafield : 'con_complet_date',     cellsalign: 'center', align : 'center', text : '완료보고작성일자' },
+                            {   width: 100, datafield : 'con_fs_mng_id',        cellsalign: 'center', align : 'center', text : '완료보고작성자' },
+                            {   width: 100, datafield : 'con_cesco_mng_nm',     cellsalign: 'center', align : 'center', text : '완료보고작성자명' },
+                            
+                        ]
+                    });
+
+                    if(data.length > 0){
+                        $("#jqxXls").jqxGrid('exportdata', 'xls', '컨설팅 관리 목록', true);
+                    }else{
+                        cmmAlert('조회 정보가 없습니다.');
+                    }
+                    
+                });
+            }
+
+        }   // methods 끝
+    }); // vue 컴포넌트 끝
+}); // $(document).ready(function(){}끝
+
+// 접수일 달력
+Vue.component('datePickerReceive', {
+    template: '<input type="text" class="calendarDate_receive" v-model="val" readonly/>',
+    props: ['val'],
+    mounted: function() {
+        drawDatePickerSingle(this, 'on-change-receive-date');
+    },
+    beforeDestroy: function(){
+        destroyDatePicker(this);
+    },
+    methods: {        
+    }
+});
+
+</script>
+</head>
+
+<body>
+    <section layout:fragment="content" id="app"  v-cloak>
+        <div id="content" class="content">
+            <!-- content -->
+            <div class="page-content">
+                <div class="page-box">
+                    <div class="clear">
+                        <h2 class="page-title fl">컨설팅 관리</h2>                        
+                        <div class="fr">
+                            <button class="btn-search" @click="getMainList()"><i></i>조회</button>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="board-search mgt20">
+                        <table>
+                            <colgroup>
+                                <col width="60px"><col width="310px">
+                                <col width="110px"><col width="">
+                                <col width="110px"><col width="">
+                                <col width="110px"><col width="">
+                            </colgroup>
+                            <tbody>
+                                <tr>
+                                    <th rowspan="2" class="valign-b th-pd">기간</th>
+                                    <td rowspan="2" class="valign-b">
+                                        <div class="mini-btns">
+                                            <button id="time01" @click="setPeriod($event,'currentMonth')">당월</button>
+                                            <button id="time02" @click="setPeriod($event,'currentYear')">당해</button>
+                                            <button id="time03" @click="setPeriod($event,'oneMonth')">1개월</button>
+                                            <button id="time04" @click="setPeriod($event,'threeMonth')">3개월</button>
+                                            <button id="time05" @click="setPeriod($event,'sixMonth')">6개월</button>
+                                            <button id="time06" @click="setPeriod($event,'oneYear')">1년</button>
+                                            <button id="time07" @click="setPeriod($event,'all')">전체</button><!-- 2022.12.09 검색조건 "전체" 추가 -->
+                                        </div>
+                                        <div class="calendar-wrap"><!-- 2022.12.09 "전체"  클릭시 all 클래스 추가, 아닐경우 제거 -->
+                                            <span class="calendar-box">
+                                                <date-picker-from name="startDate" type="text" id="startDate" size="12" title="조회 시작일" 
+                                                :val="consultSearch.start_date" @on-change-start-date="onChangeStartDate"/>
+                                                <label for="startDate"></label>
+                                            </span>
+                                            <span class="dash">~</span>
+                                            <span class="calendar-box">
+                                                <date-picker-to name="endDate" type="text" id="endDate" size="12" title="조회 종료일" 
+                                                :val="consultSearch.end_date" @on-change-end-date="onChangeEndDate"/>
+                                                <label for="endDate"></label>
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <th>매출액(원)</th>
+                                    <td>
+                                        <div class="flex-auto-end">
+                                            <div><input type="text" class="full txt-r" v-model="consultSum.salesAmount" readonly></div>
+                                            <!-- <div class="mgl5">원</div> -->
+                                        </div>
+                                    </td>
+                                    <th>수금액(원)</th>
+                                    <td>
+                                        <div class="flex-auto-end">
+                                            <div><input type="text" class="full txt-r" v-model="consultSum.revenue" readonly></div>
+                                            <!-- <div class="mgl5">원</div> -->
+                                        </div>
+                                    </td>
+                                    <th>진행단계</th>
+                                    <td>
+                                        <select class="full" v-model="consultSearch.fs_status_cd">
+                                            <option v-for="(item, index) in searchComboStep" :key="index" :value="item.cmm_dtl_cd">{{item.cmm_dtl_nm}}</option> 
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>계약MD</th>
+                                    <td>
+                                        <div><input type="text" class="full txt-r" v-model="consultSum.mdTotal" readonly></div>
+                                    </td>
+                                    <th>수행MD</th>
+                                    <td>
+                                        <div><input type="text" class="full txt-r" v-model="consultSum.mwtotal" readonly></div>
+                                    </td>
+                                    <th>세스코 담당자</th>
+                                    <td>
+                                        <select class="full" v-model="consultSearch.fs_mng_id">
+                                            <option v-for="(item, index) in searchComboCes" :key="index" :value="item.cmm_dtl_cd">{{item.cmm_dtl_nm}}</option> 
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>고객사</th>
+                                    <td>
+                                        <select class="full" v-model="consultSearch.cst_id">
+                                            <option v-for="(item, index) in searchComboCus" :key="index" :value="item.cmm_dtl_cd">{{item.cmm_dtl_nm}}</option> 
+                                        </select>
+                                    </td>
+                                    <th>지역본부</th>
+                                    <td>
+                                        <select class="full" v-model="consultSearch.cseco_dept_cd">
+                                            <option value="">전체</option>
+                                            <option v-for="(item, index) in searchComboDept" :key="index" :value="item.dept_cd">{{item.dept_nm}}</option> 
+                                        </select>
+                                    </td>
+                                    <th>상품명</th>
+                                    <td>
+                                        <select class="full" v-model="consultSearch.product_name">
+                                            <option v-for="(item, index) in searchComboProdype" :key="index" :value="item.cmm_dtl_cd">{{item.cmm_dtl_nm}}</option> 
+                                        </select>
+                                    </td>
+                                    <th>상품유형</th>
+                                    <td>
+                                        <select class="full" v-model="consultSearch.food_type" >
+                                            <option v-for="(item, index) in searchComboFType" :key="index" :value="item.cmm_dtl_cd">{{item.cmm_dtl_nm}}</option> 
+                                        </select>
+                                    </td>
+                                    <!-- <th>담당자</th>
+                                    <td>
+                                        <select class="full" v-model="consultSearch.cst_mng_id">
+                                            <option v-for="(item, index) in searchComboManager" :key="index" :value="item.cmm_dtl_cd">{{item.cmm_dtl_nm}}</option> 
+                                        </select>
+                                    </td> -->
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="page-box">
+                    <div class="clear">
+                        <div class="fl"><h3 class="content-title">컨설팅 목록</h3></div>
+                        <div class="fr" v-if="userTpCd == 02 || userTpCd == 03 ">
+                            <button class="btn-save" @click="onDownloadXls">엑셀다운로드</button>
+                            <button class="btn-save" @click="openNewConsulRegPop">신규 컨설팅 등록</button>
+                            <button class="btn-save" @click="openUptConsulRegPop">컨설팅 수정</button>
+                            <button class="btn-save" @click="delConsult">컨설팅 삭제</button>
+                        </div>
+                    </div>
+                    <div class="pin-layout-wrap">
+                        <section class="tree-right-wrap">
+                            <div class="tb-list">
+                                <div id="consultGrid"></div>
+                            </div>
+                        </section>
+                    </div>
+                    <div class="pin-layout-wrap">
+                        <section class="tree-right-wrap">
+                            <div class="tb-list">
+                                <div id="jqxXls" style="border-color:#ffffff;">&nbsp;</div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+            <!-- //content -->
+        </div>
+
+        <!-- 컨설팅 등록 -->
+        <new-consult-pop
+            v-if="openNewConsultPop" 
+            :open="openNewConsultPop" 
+            :cuslist="cusList" 
+            :consultinfo="consultInfo"             
+            :managerlist="managerList"
+            :isupt="isUpt" 
+            :popprodlist="popProdList"
+            :isreadonly="isReadonly" 
+            :ispartreadonly="isPartReadonly"
+            :mngmanagerlist="mngManagerList" 
+            :usertpcd="userTpCd" 
+            :searchcombodept="searchComboDept"     
+            :salemnglist="saleMngList" 
+            :contmnglist="contMngList" 
+            @on-change-receive-date="onChangeReceiveDate"
+            @on-pop-close="closeNewConsulRegPop" 
+            @on-reload="getMainList" 
+            @on-chk-manager="onChkManager"
+            @on-chk-bill-manager="onChkBillManager"
+            @on-manager-pop-open="openManagerSearch" 
+            @set-cus-del="setCusDel" 
+        ></new-consult-pop>        
+
+        <manager-search-pop
+            v-if="openManagerSearchPop" 
+            :open="openManagerSearchPop" 
+            :opentype="managerPopType" 
+            @on-pop-close="closeManagerSearchPop" 
+            @on-set-manager-info="setManagerInfo" 
+            @on-set-top-manager-info="onGetManagerList"
+            @on-set-cuscom-info="setCuscomInfo"            
+        ></manager-search-pop>
+
+        <div id="hcCompleteDiv"></div>
+
+    </section>  
+</body>
+</html>
+
+<!-- 신규 컨설팅 의뢰 팝업 --> 
+<template id="newConsultPop">
+    <div class="layer-pop-wrap" id="consultPopDiv">
+        <div class="layer-pop-box xlarge">
+            <div class="pop-wrap">
+                <h1 class="blind">HACCP > 컨설팅관리 > 신규 컨설팅 등록 팝업</h1>
+                <header class="pop-header">
+                    <div class="pop-header-title-wrap">
+                        <h3 class="pop-header-title" v-if="!isupt">신규 컨설팅 등록 </h3>
+                        <h3 class="pop-header-title" v-if="isupt">컨설팅 수정 </h3>
+                        <button class="btn-pop-close js-pop-close" @click="onPopClose">닫기</button>
+                    </div>
+                </header>
+                <div class="pop-container">
+                    <div class="pop-common-box">
+                        <div class="form-info-wrap">
+                            <div class="form-info-box">
+                                <dl>
+                                    <dd>
+                                        <div class="pop-search-form">
+                                            <label>고객사명</label>
+                                            <!-- <input type="text" v-model="consultinfo.cst_nm" readonly id="consultCstNm"> -->
+                                            {{consultinfo.cst_nm}}
+                                            <button class="btn-search"  @click="onManagerSearchPopOpen('T')" v-if="!isupt"><i></i>조회</button>
+                                        </div>
+                                    </dd>
+                                </dl>
+                                <dl>
+                                    <dt>매출사원</dt>                                    
+                                    <dd>
+                                        <select class="full" v-model="consultinfo.sale_mng_id" id="selSalemnglist">
+                                            <option value="">선택</option>
+                                            <option :key="index" :value="item.user_num" v-for="(item, index) in salemnglist">[{{item.pos_nm}}]{{item.user_nm}}</option>
+                                        </select>
+                                    </dd>
+                                </dl>
+                                <dl>
+                                    <dt>계약사원</dt>
+                                    <dd>
+                                        <select class="full" v-model="consultinfo.cont_id" id="selContmnglist">
+                                            <option value="">선택</option>
+                                            <option :key="index" :value="item.user_num" v-for="(item, index) in contmnglist">[{{item.pos_nm}}]{{item.user_nm}}</option>
+                                        </select>
+                                    </dd>
+                                </dl>
+                            </div>
+                        </div>
+                        <div class="mgt30">                            
+                            <h3 class="content-title tooltip">컨설팅 의뢰 제품정보
+                                <span class="tooltip-title">?</span>
+                                <span class="tooltip-content"><p><i class="th-star">*</i> 는 필수값입니다.</p></span>
+                            </h3>
+                            
+                            <table class="tb-view-01">
+                                <colgroup>
+                                    <col width="7%"><col width="10%"><col width="24%"><col width="12%">
+                                    <col width="7%"><col width="10%"><col width="10%"><col width="10%"><col width="10%">
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th></th>
+                                        <th>상품코드</th>
+                                        <th>상품명</th>
+                                        <!-- <th>계약일련번호</th> -->
+                                        <th>접수(계약)일</th>
+                                        <th>계약MD</th>
+                                        <th>계약금</th>
+                                        <th>중도금</th>
+                                        <th>잔금</th>
+                                        <th>견적단가</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <th>상품</th>
+                                        <td>
+                                            <input type="text" id="consultProdCd" v-model="consultinfo.prod_cd" class="full" placeholder="상품코드" maxlength="40" readonly>
+                                        </td>
+                                        <td>
+                                            <select class="full" v-model="consultinfo.prod_cd" v-on:change="onChgProdCd($event)">                                            
+                                                <option :key="index" :value="item.cmm_dtl_cd" v-for="(item, index) in prodCdList">{{item.cmm_dtl_nm}}</option>
+                                            </select>
+                                        <!-- <td>
+                                            <select class="full" v-model="consultinfo.cont_id" v-on:change="onChgContNo($event)">                                            
+                                                <option value="">선택</option>
+                                                <option :key="index" :value="item.cont_id" v-for="(item, index) in contNoList">{{item.cont_no}}</option>
+                                            </select>
+                                        </td> -->
+                                        <td>
+                                            <span class="calendar-box single" v-if="!isreadonly">
+                                                <date-picker-receive name="receiveDate" type="text" id="receiveDate" size="12" title="접수일" 
+                                                :val="consultinfo.receive_date" @on-change-receive-date="onChangeReceiveDate" />
+                                                <label for="receiveDate"></label>
+                                            </span>
+                                            <span class="calendar-box single" v-if="isreadonly">{{consultinfo.receive_date}}</span>
+                                        </td>
+                                        <td><input type="text" v-model="consultinfo.md_day" class="full txt-c" placeholder="" maxlength="2" @input="onChkMaxNum($event, 'md_day', 50)"></td>
+                                        <td>
+                                            <input type="text" v-model="consultinfo.est_amt1" class="full txt-r" placeholder="계약금" maxlength="10" @input="onChkMaxNum($event,'est_amt1', 999999999)">
+                                        </td>
+                                        <td>
+                                            <input type="text" v-model="consultinfo.est_amt2" class="full txt-r" placeholder="중도금" maxlength="10" @input="onChkMaxNum($event,'est_amt2', 999999999)">
+                                        </td>
+                                        <td>
+                                            <input type="text" v-model="consultinfo.est_amt3" class="full txt-r" placeholder="잔금" maxlength="10" @input="onChkMaxNum($event,'est_amt3', 999999999)">
+                                        </td>
+                                        <td align="right">{{price_total | currency}}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>상품유형</th>
+                                        <td colspan="9">
+                                            <div class="product-type-wrap">
+                                                <ul>
+                                                    <li>
+                                                        <div class="calendar-combo-box">
+                                                            <div class="mgr5">
+                                                                <select v-model="selProdTpCd">
+                                                                    <option :key="index" :value="item.cmm_dtl_cd" v-for="(item, index) in prodTpCdList">{{item.cmm_dtl_nm}}</option>                                                                    
+                                                                </select>
+                                                            </div>
+                                                            <div><button class="btn-visit check" @click="onAddCfType">추가</button></div>                                                            
+                                                        </div>
+                                                    </li>
+                                                    
+                                                    <li :key="index" v-for="(item, index) in addProdTpCdList">
+                                                        <div class="calendar-combo-box">
+                                                            <div class="mgr5"><span class="calendar-box">{{item.cmm_dtl_nm}}</span></div>
+                                                            <button class="btn-del" @click="delCfType(item.cmm_dtl_cd)" v-if="!isreadonly">삭제</button>
+                                                        </div>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mgt30 clear" style="min-height:200px;">
+                            <div class="column col3eq">
+                                <div class="clear">
+                                    <div class="fl"><h3 class="content-title">협력사</h3></div>
+                                    <div class="fr mgt3">
+                                        <button class="btn-round-blue js-pop-open" @click="onManagerSearchPopOpen('M')">협력사 추가</button>
+                                    </div>
+                                </div>                                
+                                <div class="tb-list narrow">
+                                    <ul class="thead">
+                                        <li>
+                                            <div style="width:50px;">No</div>
+                                            <div><div class="flex-auto-end"><div>협력사</div>                                            
+                                        </div>
+                                        </li>
+                                    </ul>
+                                    <!-- 협력사 목록 -->
+                                    <ul class="tbody" v-for="(cus, index) in cuslist">
+                                        <li>
+                                            <div style="width:50px;">{{index + 1}}</div>
+                                            <div class="txt-l">{{cus.cst_nm}}</div>
+                                            <div style="width:30px;"><button class="btn-del-single" @click="setCusDel(cus.cst_id)" v-if="consultinfo.cst_id != cus.cst_id">삭제</button></div>
+                                        </li>
+                                    </ul>
+                                </div>                                    
+                            </div>
+                            <div class="column col3eq-right pdl20">
+                                <h3 class="content-title">담당자</h3>
+                                <div class="fr"><label>주 담당자</label>
+                                    <select id="selManager" class="grd-select mgl5" v-model="consultinfo.cst_mng_id" v-on:change="selCusMainManager($event, 1)" >
+                                        <option value="">선택</option>
+                                        <option :key="index" :value="manager.user_id" v-for="(manager, index) in mngmanagerlist">{{manager.user_nm}}</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <div class="tb-list narrow">
+                                        <ul class="thead">
+                                            <li>
+                                                <div style="width:8%;">No</div>
+                                                <div style="width:8%;">선택</div>
+                                                <div style="width:8%;">정산</div>
+                                                <div style="width:8%;">수행 서명</div>
+                                                <div style="width:8%;">완료 서명</div>
+                                                <div>고객사명</div>
+                                                <div style="width:15%;" class="txt-l">담당자</div>
+                                                <div style="width:30%;">이메일</div>
+                                            </li>
+                                        </ul>
+                                        <ul class="tbody" :key="index" v-for="(manager, index) in managerlist">
+                                            <li>
+                                                <div style="width:8%;">{{index + 1}}</div>
+                                                <div style="width:8%;">
+                                                    <label class="check">
+                                                        <input type="checkbox" v-model="manager.fs_chat_yn" true-value="Y" false-value="N" v-on:change="onChkManagerSub($event, manager)">
+                                                        <span class="ico"></span>
+                                                    </label>
+                                                </div>
+                                                <div style="width:8%;">
+                                                    <label class="check">
+                                                        <input type="checkbox" :disabled="isreadonly" v-model="manager.fs_bill_mng_yn" true-value="Y" false-value="N" name="bill_check" v-on:change="onChkBillManager(index)">
+                                                        <span class="ico"></span>
+                                                    </label>
+                                                </div>
+                                                <div style="width:8%;">
+                                                    <label class="check">
+                                                        <input type="checkbox" :disabled="consultinfo.cst_mng_id == manager.user_id" v-model="manager.fs_sign_yn" name="chk_fs_sign_yn" true-value="Y" false-value="N" @click="chkChat($event,manager)">
+                                                        <span class="ico"></span>
+                                                    </label>
+                                                </div>
+                                                <div style="width:8%;">
+                                                    <label class="check">
+                                                        <input type="checkbox" :disabled="consultinfo.cst_mng_id == manager.user_id" v-model="manager.fs_comp_sign_yn" name="chk_fs_comp_sign_yn" true-value="Y" false-value="N" @click="chkChat($event,manager)">
+                                                        <span class="ico"></span>
+                                                    </label>
+                                                </div>
+                                                <div class="txt-l">{{manager.cst_nm}}</div>
+                                                <div style="width:15%;" class="txt-l">{{manager.user_nm}}</div>
+                                                <div style="width:30%;">{{manager.email}}</div>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mgt30 clear">
+                            <div class="column col2 pdr10">
+                                <div>
+                                    <h3 class="content-title">세스코 담당자</h3>                                    
+                                    <div class="fr">
+                                        <label v-if="usertpcd == '03'">지역 본부</label>
+                                        <select id="selCescoDept" class="grd-select mgl5" v-model="search_dept_cd" v-on:change="onSearchCescoDept($event)" v-if="usertpcd == '03'">
+                                            <option value="">전체</option>
+                                            <option v-for="(item, index) in cescoDeptList" :key="index" :value="item">{{item}}</option> 
+                                        </select>
+                                        &nbsp;&nbsp;&nbsp;                                        
+                                        <label>주 담당자</label>
+                                        <select id="selCescoManager" class="grd-select mgl5" v-model="consultinfo.fs_mng_id" v-on:change="selCusMainManager($event, 2)">
+                                            <option value="">선택</option>
+                                            <option :key="index" :value="manager.user_id" v-for="(manager, index) in mngCescoList">{{manager.user_nm}}</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <div class="tb-list narrow">
+                                            <ul class="thead">
+                                                <li>
+                                                    <div style="width:8%;">No</div>
+                                                    <div style="width:8%;">선택</div>
+                                                    <div style="width:8%;">수행 서명</div>
+                                                    <div style="width:8%;">완료 서명</div>
+                                                    <div>부서명</div>
+                                                    <div style="width:15%;" class="txt-l">담당자</div>
+                                                    <div style="width:30%;">이메일</div>
+                                                </li>
+                                            </ul>
+                                            <ul class="tbody" :key="index" v-for="(cesco, index) in cescoListSub">
+                                                <li>
+                                                    <div style="width:8%;">{{index + 1}}</div>
+                                                    <div style="width:8%;">
+                                                        <label class="check">
+                                                            <input type="checkbox" v-model="cesco.fs_chat_yn" true-value="Y" false-value="N" v-on:change="onChkCesco($event, cesco)">
+                                                            <span class="ico"></span>
+                                                        </label>
+                                                    </div>
+                                                    <div style="width:8%;">
+                                                        <label class="check">
+                                                            <input type="checkbox" :disabled="consultinfo.fs_mng_id ==cesco.user_id" v-model="cesco.fs_sign_yn" name="chk_sign_yn" true-value="Y" false-value="N" @click="chkChat($event,cesco)">
+                                                            <span class="ico"></span>
+                                                        </label>
+                                                    </div>
+                                                    <div style="width:8%;">
+                                                        <label class="check">
+                                                            <input type="checkbox" :disabled="consultinfo.fs_mng_id ==cesco.user_id" v-model="cesco.fs_comp_sign_yn" name="chk_comp_sign_yn" true-value="Y" false-value="N" @click="chkChat($event,cesco)">
+                                                            <span class="ico"></span>
+                                                        </label>
+                                                    </div>
+                                                    <div class="txt-l"> {{cesco.user_dept_nm}}</div>
+                                                    <div style="width:15%;" class="txt-l">{{cesco.user_nm}}</div>
+                                                    <div style="width:30%;">{{cesco.email}}</div>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="column col2 pdl10">
+                                <h3 class="content-title">첨부파일</h3>
+                                <table class="tb-view-01 narrow">
+                                    <colgroup><col width="20%"><col width=""><col width="83px"></colgroup>
+                                    <tbody>
+                                        <tr :key="fileIndex" v-for="(attachfile, fileIndex) in attachFileList">
+                                            <th align="left">
+                                                <!-- <input type="text" class="full" placeholder="파일명" v-model="attachfile.atch_nm" :readonly="isreadonly"> -->
+                                                <select class="grd-select full" v-model="attachfile.atch_ref_id" :disabled="isreadonly">
+                                                    <option value="">선택</option>
+                                                    <option :key="index" :value="item.cmm_dtl_cd" v-for="(item, index) in attachFileTypeList">{{item.cmm_dtl_nm}}</option>
+                                                </select>                                                
+                                            </th>                                            
+                                            <td>                                                
+                                                <div class="file-upload-wrap">                                                    
+                                                    <div class="file-upload"> 
+                                                        <button class="btn-base" style="margin-right:5px;" @click="onDownload(attachfile.ser_file_nm)" v-if="attachfile.url != ''">다운로드</button>
+                                                        <input type="file" :id="'attach_file' + fileIndex" name="attach_file_list" class="upload-hidden" @change="onFileUpload($event, fileIndex, 'M')">
+                                                        <input class="upload-name" v-model="attachfile.org_file_nm" placeholder="파일을 선택해 주세요." disabled="disabled">
+                                                        <label v-if="!isreadonly" :for="'attach_file' + fileIndex"><i></i>파일첨부</label>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="txt-l">
+                                                <div class="tb-btns-wrap">
+                                                    <!-- <button class="btn-del" v-if="!isreadonly" @click="delFileUpload(fileIndex)"><i>-</i><span>삭제</span></button> -->
+                                                    <button class="btn-del" v-if="!isreadonly" @click="delFileUpload(fileIndex)"><i>-</i><span>삭제</span></button>
+                                                    <button class="btn-add" v-if="fileIndex === attachFileList.length - 1 && !isreadonly" @click="addFileUpload" ><i>+</i><span>추가</span></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pop-bottom">
+                    <div class="pop-btn-box">
+                        <a href="javascript:void(0);" class="btn-pop-bottom" @click="onPopClose">취소</a>
+                        <a href="javascript:void(0);" class="btn-pop-bottom" @click="setConSult" v-if="!isupt && !isreadonly && !ispartreadonly">등록</a>
+                        <a href="javascript:void(0);" class="btn-pop-bottom" @click="setConSult" v-if="isupt && !isreadonly && !ispartreadonly">수정</a>
+                        <!-- <a href="javascript:cmmAlert('수정이 불가능 합니다.');" class="btn-pop-bottom" v-if="isreadonly">수정</a> -->
+                        <a href="javascript:void(0);" class="btn-pop-bottom" @click="setConSultManager" v-if="isreadonly && ispartreadonly" >수정</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<!-- 협렵사 담당자 선택 팝업 -->
+<template id="managerSearchPop">
+    <div class="layer-pop-wrap">
+        <div class="layer-pop-box midium">
+            <div class="pop-wrap">
+                <h1 class="blind">고객사 검색</h1>
+                <header class="pop-header">
+                    <div class="pop-header-title-wrap">
+                        <h3 class="pop-header-title" v-if="opentype == 'M'">협력사 검색</h3>
+                        <h3 class="pop-header-title" v-if="opentype == 'T'">고객사 검색</h3>
+                        <button class="btn-pop-close js-pop-close" @click="onPopClose">닫기</button>
+                    </div>
+                </header>
+                <div class="pop-container">
+                    <div class="pop-common-box">
+                        <div class="pop-search-form">
+                            <label>고객사명</label>
+                            <input type="text" v-model="srchCstNm" @keyup.enter="searchManager">
+                            <button class="btn-search" @click="searchManager"><i></i>조회</button>
+                        </div>
+                        <div class="tb-list mgt20">
+                            <div id="customerGrid">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pop-bottom">
+                    <div class="pop-btn-box">
+                        <a href="javascript:void(0);" class="btn-pop-bottom js-pop-close" @click="onPopClose">취소</a>
+                        <a href="javascript:void(0);" class="btn-pop-bottom" @click="setManager">등록</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<title>표시컨설팅</title>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<link rel="stylesheet"  th:href="@{/jqwidgets/styles/jqx.base.css}" />
+		<link rel="stylesheet"  th:href="@{/jqwidgets/styles/jqx.arctic.css}" />
+		<link rel="stylesheet"  th:href="@{/css/import.css}" />
+
+        <script type="text/javascript" th:src="@{/js/vue.js}"></script>
+		<script type="text/javascript" th:src="@{/js/axios.min.js}"></script>
+		<script type="text/javascript" th:src="@{/js/jquery.min.js}"></script>
+		<script type="text/javascript" th:src="@{/js/babel.min.js}"></script>
+		<script type="text/javascript" th:src="@{/js/es6-promise.min.js}"></script>
+		<script type="text/javascript" th:src="@{/js/polyfill.min.js}"></script>
+		<script type="text/javascript" th:src="@{/js/vue-select.js}"></script>
+		<script type="text/javascript" th:src="@{/js/moment.min.js}"></script>
+		<script type="text/javascript" th:src="@{/js/highstock.js}"></script>
+		<script type="text/javascript" th:src="@{/js/act_common.js}"></script>
+		<script type="text/javascript" th:src="@{/js/common.js}"></script>
+		<script type="text/javascript" th:src="@{/js/jquery-ui.min.js}"></script>
+		<script type="text/javascript" th:src="@{/js/input.js}"></script>
+		<script type="text/javascript" th:src="@{/js/jquery.mtz.monthpicker.js}"></script>
+
+		<script type="text/javascript" th:src="@{/jqwidgets/jqx-all.js}"></script>
+		<script type="text/javascript" th:src="@{/jqwidgets/jqxcore.js}"></script>
+        <script>
+            function chkpop() {
+                alert('1');
+                $("#testpop").toggle();
+            }
+        </script>
+        <template id="itlist">
+            <div>
+                <mine-it inline-template ref='mint'>
+                   <ul>
+                     <li>mine</li>
+                     <li>it</li>
+                     <li>record</li>
+                     <button v-on:click="goParnet()">VueJS</button>
+                   </ul>
+               </mine-it>
+           </div>           
+        </template>
+
+        <script type="text/javascript">    
+            Vue.component('itlist', {
+                template: '#itlist',
+                props: [],
+                data() {
+                    return {
+                        test : 'hi'
+                    }
+                },
+                methods: {
+                    goParnet : function(){ 
+                        this.$parent.goChild();
+                    },
+                    hiParent : function() {
+                        alert(this.test); 
+                    }
+                
+                }
+            })
+        </script>
+
+        <script type="text/javascript">
+            var vue
+            $(document).ready(function(){
+                vue = new Vue({
+                    el: '#app',
+                    data: {
+            
+                    },
+                    methods: {
+                        
+                    }
+                })
+            });
+        </script>
+</head>
+<body>
+    <div class="wrap">
+        <div class="wrapInner">
+            <header id="header" class="header">
+                <div class="header-inner">
+                    <div class="header-main">
+                        <h1 class="logo">
+                            <a href="#"><span>표시컨설팅</span></a>
+                        </h1>
+                    </div>
+                    <nav id="nav" class="header-nav">
+                        <ul class="nav-1depth">
+                            <li class="is-opened"><a href="#"><span class="txt">표시컨설팅</span></a></li>
+                            <li><a href="#"><span class="txt">정산대상</span></a></li>
+                            <li><a href="#"><span class="txt">서비스견적서</span></a></li>
+                            <li><a href="#"><span class="txt">공지사항</span></a></li>
+                        </ul>
+                    </nav>
+                    <div class="utility">
+                        <div class="profile-layer" id="utilityProfile">
+                            <ul class="profile-menu">
+                                <li class="name">
+                                    <a href="#"><span>CJ제일제당</span><span>김고객</span></a>
+                                </li>
+                                <li class="logout">
+                                    <a href="#">로그아웃</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <div id="container" class="container">
+                <div id="content" class="content">
+                    <!-- content -->
+                    <div class="page-content flex-layout pdb0">
+                        <div class="page-box">
+                            <div class="clear">
+                                <h2 class="page-title fl">코드관리</h2>
+                                <select class="select-top fl mgl60"><option>상태</option></select>
+                                <div class="fr">
+                                    <button class="btn-search"><i></i>조회</button>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="board-search mgt20">
+                                <table>
+                                    <colgroup>
+                                        <col width="60px"><col width="25%"><col width="10%"><col width="">
+                                        <col width="10%"><col width=""><col width="10%"><col width="">
+                                    </colgroup>
+                                    <tbody>
+                                        <tr>
+                                            <th rowspan="2" class="valign-b th-pd">등록일</th>
+                                            <td rowspan="2" class="valign-b">
+                                                <div class="mini-btns">
+                                                    <button>당월</button>
+                                                    <button>당해</button>
+                                                    <button>1개월</button>
+                                                    <button>3개월</button>
+                                                    <button>6개월</button>
+                                                    <button>1년</button>
+                                                </div>
+                                                <div class="calendar-wrap mgt5">
+                                                    <span class="calendar-box"><input type="text" class="calendarDate_start"></span>
+                                                    <span class="dash">~</span>
+                                                    <span class="calendar-box"><input name="" type="text" class="calendarDate_end"></span>
+                                                </div>
+                                            </td>
+                                            <th></th>
+                                            <td></td>
+                                            <th></th>
+                                            <td></td>
+                                            <th></th>
+                                            <td></td>
+                                        </tr>
+                                        <tr>
+                                            <th>코드명</th>
+                                            <td><input type="text" class="full"></td>
+                                            <th></th>
+                                            <td></td>
+                                            <th></th>
+                                            <td></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="page-box last">
+                            <div class="pin-layout">
+                                <div class="clear">
+                                    <div class="fl"><h3 class="content-title">진행단계</h3></div>
+                                    <div class="fr">
+                                        <button class="btn-save">코드등록</button>
+                                        <button class="btn-save">코드명수정</button>
+                                        <button class="btn-save">정렬수정</button>
+                                        <button class="btn-save">코드삭제</button>
+                                    </div>
+                                </div>
+                                <div class="pin-layout-wrap">
+                                    <button class="btn-tree-menu">트리메뉴</button>
+                                    <section class="tree-wrap">
+                                        <div class="tree-header">
+                                            <h5>코드유형</h5>
+                                            <label class="tree-pin">
+                                                <input type="checkbox">
+                                                <span class="ico"></span>
+                                            </label>
+                                        </div>
+                                        <div class="tree-content foot">
+                                            <!-- 선택시 class : selected, 미사용시 class : unused -->
+                                            <ul class="code-list">
+                                                <li class="unused">
+                                                    <div class="flex-auto-end">
+                                                        <div><span>진행단계</span></div>
+                                                        <div class="mgl5">
+                                                            <button class="btn-code-edit">수정</button>
+                                                            <button class="btn-code-save">저장</button>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                                <li class="selected">
+                                                    <div class="flex-auto-end">
+                                                        <div><span>진행단계</span></div>
+                                                        <div class="mgl5">
+                                                            <button class="btn-code-edit">수정</button>
+                                                            <button class="btn-code-save">저장</button>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                                <li>
+                                                    <div class="flex-auto-end">
+                                                        <div><span>진행단계</span></div>
+                                                        <div class="mgl5">
+                                                            <button class="btn-code-edit">수정</button>
+                                                            <button class="btn-code-save">저장</button>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                        <div class="tree-footer">
+                                            <div class="btn-tree-bottom-wrap"><button class="btn-wide">코드유형등록</button></div>
+                                        </div>
+                                    </section>
+                                    <section class="tree-right-wrap">
+                                        <div class="tb-list">
+                                            <ul class="thead">
+                                                <li>
+                                                    <div style="width:8%;">No</div>
+                                                    <div>상태 / 코드</div>
+                                                    <div>명칭</div>
+                                                    <div style="width:10%;">정렬</div>
+                                                    <div style="width:12%;">등록자</div>
+                                                    <div style="width:15%;">등록일시</div>
+                                                    <div style="width:12%;">수정자</div>
+                                                    <div style="width:15%;">수정일시</div>
+                                                </li>
+                                            </ul>
+                                            <ul class="tbody">
+                                                <li>
+                                                    <div style="width:8%;">
+                                                        <label class="check">
+                                                            <input type="checkbox">
+                                                            <span class="ico"></span>
+                                                            <span class="txt">1</span>
+                                                        </label>
+                                                    </div>
+                                                    <div class="txt-l">
+                                                        <div class="col-consultant">
+                                                            <span class="tag-circle">사용중</span>
+                                                            <span>C001</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="txt-l">서류취합중</div>
+                                                    <div style="width:10%;">1</div>
+                                                    <div style="width:12%;">관리자</div>
+                                                    <div style="width:15%;">2022-01-05 11:00:14</div>
+                                                    <div style="width:12%;">관리자</div>
+                                                    <div style="width:15%;">2022-01-05 11:00:14</div>
+                                                </li>
+                                                <li>
+                                                    <div style="width:8%;">
+                                                        <label class="check">
+                                                            <input type="checkbox">
+                                                            <span class="ico"></span>
+                                                            <span class="txt">1</span>
+                                                        </label>
+                                                    </div>
+                                                    <div class="txt-l">
+                                                        <div class="col-consultant">
+                                                            <span class="tag-circle">미사용</span>
+                                                            <span>C001</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="txt-l">1차 검토완료</div>
+                                                    <div style="width:10%;">1</div>
+                                                    <div style="width:12%;">관리자</div>
+                                                    <div style="width:15%;">2022-01-05 11:00:14</div>
+                                                    <div style="width:12%;">관리자</div>
+                                                    <div style="width:15%;">2022-01-05 11:00:14</div>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                        <hr>
+                                        <div class="clear mgt10">
+                                            <div class="fr">
+                                                <div class="paging-wrap">
+                                                    <div class="paging">
+                                                        <a class="first" title="이전 끝으로 이동" href="#">이전 끝으로 이동</a>
+                                                        <a class="prev" title="이전 10 페이지 전으로 이동" href="#">이전 10 페이지 전으로 이동</a>
+                                                        <a class="page-on" href="#">1</a>
+                                                        <a href="#">2</a>
+                                                        <a href="#">3</a>
+                                                        <a href="#">4</a>
+                                                        <a href="#">5</a>
+                                                        <a class="next" title="다음 10 페이지 후로 이동" href="#">다음 10 페이지 후로 이동</a>
+                                                        <a class="last" title="다음 끝으로 이동" href="#">다음 끝으로 이동</a>
+                                                    </div>
+                                                    <select class="paging-select"><option>10개씩 보기</option></select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </section>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- //content -->
+                </div>
+            </div>
+        </div>
+        
+        <footer id="footer" class="footer">
+            <div class="footer-inner">
+                <div>
+                    (주)세스코 서울특별시 강동구 상일로 10길 46 세스코 터치센터(134-090)&nbsp;&nbsp;&nbsp;&nbsp;Tel : 1588-1119&nbsp;&nbsp;&nbsp;&nbsp;
+                    대표이사 : 사장 전찬혁&nbsp;&nbsp;&nbsp;&nbsp;사업자등록번호 : 212-81-05946<br>
+                    COPYRIGHT(C) BY CESCO CO., LTD. ALL RIGHTS RESERVED.
+                    <div class="footer-link-box">
+                        <a href="">개인정보처리방침</a>
+                        <a href="">서비스 이용약관</a>
+                        <a href="">전자금융거래이용약관</a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/default}">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1 minimum-scale=1" />
+<script th:inline="javascript" type="text/javascript">
+var vue
+$(document).ready(function(){
+    // 화면명: 표시컨설팅 메인 화면(FSCCS10007)
+    // 작성자: gayeong
+    // 작성일: 2022.10.12
+	vue = new Vue({
+		el: '#app',
+		data: {
+            familyList: [],
+            noticeList: [],
+            mainConsultingList: [],
+
+            // 진행중인 표시컨설팅과 동일한 param
+            srchParam : {   
+                p_type: '1',                                // 조회타입
+                sys_id:[[${session.sysCode}]],              // 시스템 id
+                customer:'',                                // 고객사
+                rgstr_id:[[${session.userId}]],             // 로그인아이디
+                fs_status_cd:'',                            // 진행상태
+                food_type:'',                               // 식품유형 코드 
+                product_name:'',                            // 제품명
+                manager:'',                                 // 담당자
+                cesco_person_in_charge:'',                  // 세스코 담당자
+                start_date:'',                              // 시작일
+                end_date:'',                                // 종료일
+                cmbType:'',                                 // 콤보타입설정용   
+            },
+		},
+		methods: {
+            // get main 목록
+			getMainList: function() {
+                let url = '/fs/main/mainList';
+                let _this = this;
+                let msg = '';
+
+                axiosCall('get', url, {}, function(res){
+                    _this.noticeList = res.data.noticeList.slice(0, 5);
+                    _this.mainConsultingList = res.data.mainConsultingList.slice(0, 5);
+                }, msg);
+            },
+            // 페이지 이동
+            movePage: function(idx, param) {
+                let url = '';
+                let _this = this;
+
+                if(idx == '0') {
+                    url = '/notice/noticeList?';
+                } else if(idx == '1') {
+                    url = '/notice/noticeDetails?';
+                } else if(idx == '2') {
+                    window.localStorage.setItem('consultGridRow',JSON.stringify(_this.mainConsultingList[param.index]));
+                    param = {};
+                    url = '/consulting/consult/indicationCoslChat?';
+                } else if(idx == '3') {
+                    url = '/consulting/consult/indicationCoslList?';
+                } else {
+                    alert('페이지 준비중입니다.');
+                    return;
+                }
+
+                // param data setting
+                let paramStr = "";
+                $.each(param, function(key, value){
+                    paramStr += (paramStr!=""? "&" : "") + key + "=" +  value;
+                });
+                
+                window.location = url + paramStr;
+            }
+		},
+        mounted: function(){
+            let _this = this;
+            _this.getMainList();
+            getCodeListForArrNm([{cmm_cd: 'FS026', arr_nm: 'familyList'}], _this, selectBoxToggle());
+        },
+	})
+});
+
+</script>
+
+</head>
+<style>
+    .jqx-grid-cell {
+        font-size: 16px;
+      }
+</style>
+<body>
+	<section layout:fragment="content" id="app" v-cloak>
+		<!-- content -->
+        <div class="page-content fs">
+            <section class="main-content">
+                <div class="list-select-box Family">
+                    <a href="#" class="btn-select"><span>Family Site</span>
+                    </a>
+                    <ul class="list-select">
+                        <li v-for="(item, index) in familyList" v-if="item.etc_cd3 == 'FS' && item.etc_cd4 != 'main'" :value="item.cmm_dtl_cd" >
+                            <a :href="item.etc_cd1" target="_blank"><span>{{item.cmm_dtl_nm}}</span></a>
+                        </li>
+                        <li v-for="(item, index) in familyList" v-if="item.etc_cd3 == 'FS' && item.etc_cd4 == 'main'" :value="item.cmm_dtl_cd" >
+                            <a :href="item.etc_cd1" target="_self"><span>{{item.cmm_dtl_nm}}</span></a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="main-visual">
+                    <!-- <img th:src="@{/images/common/img_main_fs.png}"/> -->
+                    <div class="txt">
+                        <b>표시·광고 적합성 검토가 필요하다면?</b>
+                        <p>전문성과 노하우를 가진 표시컨설팅 전문인력을 보유하고 있는 세스코는<br>최신 법률 정보를 기반으로 제품 및 광고 페이지의 표시·광고를 검토해 드립니다.</p>
+                    </div>
+                </div>
+                <div class="clear main-board-wrap">
+                    <div class="column col2 pdr10">
+                        <div class="main-board-content">
+                            <div class="main-board-header" style="margin-bottom:2px;">
+                                <h3>공지사항</h3>
+                                <button class="btn-more-main" @click="movePage('0')">더보기</button>
+                            </div>
+                            <div class="main-grid">
+                                <!-- 메인화면에서는 아래 이미지와 같이 컬럼을 구성해주세요 . 
+                                    1.header, paging 삭제
+                                    2.불필요한 노출 컬럼 삭제(메인에서만)
+                                    3.공지는 5개까지 노출
+                                -->
+                                <!-- <img th:src="@{/images/temp/main_table1.png}" style="width:100%;"/> -->
+                                 <div class="tb-list narrow notice">
+                                     <ul class="tbody">
+                                         <li v-for="(item, index) in noticeList" :value="item.noti_seq">
+                                            <div class="num">{{index+1}}</div>
+                                            <div class="txt-l left">
+                                                <span v-if="item.type_cd == '01'" class="tag notice">{{item.type_nm}}</span>
+                                                <a href="#none" @click="movePage('1', {sys_id:item.sys_id, noti_seq:item.noti_seq, noti_no:index+1})">{{item.noti_title}}</a>
+                                            </div>
+                                            <div class="txt-r right">{{item.start_date}}</div>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column col2 pdl10">
+                        <div class="main-board-content">
+                            <div class="main-board-header" style="margin-bottom:2px;">
+                                <h3>진행중인 표시컨설팅</h3>
+                                <button class="btn-more-main" @click="movePage('3')">더보기</button>
+                            </div>
+                            <div class="main-grid">
+                                <!-- 메인화면에서는 아래 이미지와 같이 컬럼을 구성해주세요. 
+                                    1.header, paging 삭제
+                                    2.불필요한 노출 컬럼 삭제(메인에서만)
+                                    3.금일 완료 예정 표시컨설팅 리스트는 3개까지 노출 -> 5
+                                -->
+                                <!-- <img th:src="@{/images/temp/main_table2.png}" style="width:100%;"/> -->
+                                <div class="tb-list narrow today">
+                                    <ul class="tbody">
+                                        <li v-for="(item, index) in mainConsultingList" :value="item.noti_seq">
+                                            <div class="txt-l left">
+                                                <span>{{item.cst_nm}}</span>
+                                                <a href="#none" @click="movePage('2', {index:index})">{{item.fs_no}}</a>
+                                                <br/>
+                                                <p>{{item.prod_nm1}}</p>
+                                            </div>
+                                            <div class="txt-r right">
+                                                <span>{{item.mdfr_dt}}</span><br/>
+                                                <span>{{item.fs_chat_nm}}</span>
+                                            </div>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        <!-- //content -->
+        <div id="userPopup"></div>
+	</section>		
+</body>
+</html>

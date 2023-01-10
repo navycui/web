@@ -1,0 +1,281 @@
+
+<script type="text/javascript">
+
+    var hcCompleteVue
+    $(document).ready(function(){
+        hcCompleteVue = new Vue({
+            el: '#hcComplete',
+            data: {
+                eformLoc		:	`[[${reportBill.eformLoc}]]`,     //'[[${eformLoc}]]',
+                eformDir		:	`[[${reportBill.eformDir}]]`,     //'[[${eformDir}]]',
+            },
+            mounted: function (){
+    
+                var _this = this;                
+                let url = '/acc/api/reportData';
+    
+                let _content0 = [];
+    
+                _content0.push({
+                    title     : `[[${reportBill.title}]]`,
+                    price     : `[[${reportBill.price}]]`,
+                    detail    : `[[${reportBill.detail}]]`,
+                    note      : `[[${reportBill.title}]]`        
+                });
+    
+                let _content1 = [];
+    
+    
+                axiosCall('post', url, {fs_bill_no : '[[${reportBill.fs_bill_no}]]'}, function(response){
+                    
+                    _content1 = response.data;
+
+                    if(response.data.length != 0){
+                        
+                        var form = document.createElement('form');
+                            form.target = 'eformView';
+                            form.method = 'POST';
+                            form.style.display = 'none';
+                            // form.action = _this.eformLoc + '/eform_003001_hc.jsp';
+                            form.action = _this.eformLoc + '/eform_bill.jsp';
+
+                            console.log('form.action : ' + form.action);
+                                                    
+                        var input0 = document.createElement('input');
+                            input0.type = 'hidden';
+                            input0.name = 'content0';
+                            input0.value = '{\"content0\":' + JSON.stringify(_content0) + '}';
+    
+                        var input1 = document.createElement('input');
+                            input1.type = 'hidden';
+                            input1.name = 'content1';
+                            input1.value = '{\"content1\":' + JSON.stringify(_content1) + '}';
+    
+                        // var input0 = document.createElement('input');
+                        //     input0.type = 'hidden';
+                        //     input0.name = 'content0';
+                        //     input0.value = '{';
+                        //     input0.value +=  '\"content0\":' + JSON.stringify(_content0);
+                        //     input0.value +=  ', \"content1\" : ' + JSON.stringify(_content1);
+                        //     input0.value +=  '}';
+    
+                        console.log('input0 : ', input0);
+                        console.log('input1 : ', input1);
+                        // console.log('input0 : ', input0);
+                        
+                        form.appendChild(input0);                        
+                        form.appendChild(input1);
+                        // form.appendChild(input2);
+                
+                    
+                        var fileNm = document.createElement('input');
+                            fileNm.type = 'hidden';
+                            fileNm.name = 'fileNm';
+                            fileNm.value = 'Bill_[[${reportBill.fs_bill_no}]]';
+                            
+                        var eformDir = document.createElement('input');
+                            eformDir.type = 'hidden';
+                            eformDir.name = 'eformDir';
+                            eformDir.value = _this.eformDir;
+    
+                        console.log('fileNm : ', fileNm);
+                        console.log('eformDir : ', eformDir);
+                        
+                        form.appendChild(fileNm);
+                        form.appendChild(eformDir);
+                        
+                        document.body.appendChild(form);
+                        form.submit();
+                    }else{
+                        console.log("데이터가 존재하지 않습니다.");
+                    }
+                });
+                        
+            },
+    
+            methods: {
+                // getHcComplete : function(paramsdata){
+                //     let url = '/api/hcConsulting/getComplete';
+                //     let _this = this;
+                //     let msg = '';
+    
+                //     axiosCall('get', url, paramsdata, function(res){
+                //         if(res.data.length != 0){
+                //             console.log(res.data)
+                //             _this.contentData = res.data;
+                //         }else{
+                //             console.log("데이터가 존재하지 않습니다.");
+                //         }
+                //     }, msg);
+                // },
+                closePopup: function() {
+                    let _this = this;
+                    
+                    closeCmmPopup('hcComplete');
+                },
+            }     
+        });
+    
+        
+    });
+    
+    // $(window).on('message', function (e) {
+        
+    //     var json = e.originalEvent.data.resultJson;
+    //     var result = json.errorCode;
+    //     var inputJson ={
+    //         sys_id : hcCompleteVue.sys_id,
+    //         fs_no : hcCompleteVue.fs_no,
+    //         fs_seq : hcCompleteVue.fs_seq,
+    //         con_text11 : json.values.Inputbox1.data[0],
+    //         // con_text12 : json.values.Inputbox14.data[0],
+    //         // con_text21 : json.values.Inputbox2.data[0],
+    //         // con_text12 : json.values.Inputbox8.data[0],
+    //         // con_text31 : json.values.Inputbox3.data[0],
+    //         // con_text32 : json.values.Inputbox9.data[0],
+    //         // con_text41 : json.values.Inputbox4.data[0],
+    //         // con_text42 : json.values.Inputbox10.data[0],
+    //         // con_text51 : json.values.Inputbox5.data[0],
+    //         // con_text52 : json.values.Inputbox11.data[0],
+    //         // con_text61 : json.values.Inputbox6.data[0],
+    //         // con_text62 : json.values.Inputbox12.data[0],
+    //         // con_text71 : json.values.Inputbox7.data[0],
+    //         // con_text72 : json.values.Inputbox13.data[0],
+    //         cst_mng_id : hcCompleteVue.cst_mng_id,
+    //         fs_mng_id : hcCompleteVue.fs_mng_id,
+    //         rgstr_id : hcCompleteVue.userId,
+    //         mdfr_id : hcCompleteVue.userId,
+    
+    //     }
+    //     var saveData = {};
+    // 	var addData  = [];
+    // 	var error    = '';
+    //     var loginID	 =	hcCompleteVue.userId;
+    
+    //     //var value = JSON.stringify(json.values);
+        
+    //     var isPass   = false;
+    
+    //     json.userId = loginID;
+    //     console.log(inputJson)
+    //     if (result == 0) {
+    
+    //         let url = '/api/hcConsulting/setComplete';
+            
+    
+    //                 axiosCall('get',url, inputJson, function (res) {
+    //                     console.log(res);
+    //                     if (res.data.body) {
+    //                         alert('서명이 완료되었습니다.');
+    //                         var filter = "win16|win32|win64|mac|macintel";
+    //                         if (navigator.platform) {
+    //                             if (filter.indexOf(navigator.platform.toLowerCase()) < 0) {
+    //                                 //opener.vue.getCtrtList(1);
+    //                                 opener.hcCompleteVue
+    //                             }
+    //                         }
+    //                     }
+    //                 });
+    //         // $.ajax({
+    //         //             url: '/api/hcConsulting/setComplete',
+    //         //             type: 'post',
+    //         //             data: inputJson,
+    //         //             async: false,
+    //         //             dataType: 'json',
+    //         //             contentType: 'application/json',
+    //         //             success: function (res) {
+    //         //                 if (res.errorIdx == 9999) {
+    //         //                     alert(res.errorMsg);
+    //         //                     isPass = false;
+    //         //                     return false;
+    //         //                 } else {
+    
+    //         //                     // var completeSave = [];
+    
+    //         //                     // for (var i = 0; i < res.contractAttachDocSave.length; i++) {
+    //         //                     //     var contractAttachDocSaveTemp = {
+    //         //                     //         docCd: res.contractAttachDocSave[i].docCd,
+    //         //                     //         docNm: res.contractAttachDocSave[i].docNm,
+    //         //                     //         docPath: res.contractAttachDocSave[i].docPath,
+    //         //                     //         docFileName: res.contractAttachDocSave[i].docFileName
+    
+    //         //                     //     }
+    //         //                     //     contractAttachDocSave.push(contractAttachDocSaveTemp);
+    //         //                     // }
+    //         //                     // addData.mobilePcDivCode = '031001'; // 모바일  031001 | PC 031002 
+    //         //                     // addData.interviewDivCode = '030002'; // 대면    030001 | 비대면 030002
+    //         //                     // addData.contractAttachDocSave = contractAttachDocSave;
+    
+    //         //                     // var data = {
+    //         //                     //     header: header,
+    //         //                     //     path: '/api/hcConsulting/setComplete',
+    //         //                     //     param: addData
+    //         //                     // }
+    
+    //         //                     // axiosCall('get', data, function (res) {
+    //         //                     //     console.log(res);
+    //         //                     //     if (res.data.body) {
+    //         //                     //         alert('서명이 완료되었습니다.');
+    //         //                     //         var filter = "win16|win32|win64|mac|macintel";
+    //         //                     //         if (navigator.platform) {
+    //         //                     //             if (filter.indexOf(navigator.platform.toLowerCase()) < 0) {
+    //         //                     //                 //opener.vue.getCtrtList(1);
+    //         //                     //                 opener.hcCompleteVue
+    //         //                     //             }
+    //         //                     //         }
+    //         //                     //     }
+    //         //                     // });
+                                        
+                                
+    //         //                 }
+    //         //             }
+    //         //         });
+                
+    //             }else if (result == 1) {
+    //                 alert('리포트 정보가 없습니다.');
+    //                 return false;
+    //             }else if (result == 2) {
+    //                 alert('리포트 서버 설치가 안되어있습니다.');
+    //                 return false;
+    //             }else if (result == 3) {
+    //                 alert('결과물(document) 파일을 찾지 못하였습니다.');
+    //                 return false;
+    //             }else if (result == 4) {
+    //                 alert('PDF 파일 생성시 오류가 발생하였습니다.');
+    //                 return false;
+    //             }else if (result == 5) {
+    //                 alert('리포트 페이지가 존재하지 않습니다.');
+    //                 return false;
+    //             }
+    //         });
+    </script>
+    
+    <section layout:fragment="content" id="hcComplete"  v-cloak>
+        <div class="layer-pop-wrap">
+            <div class="layer-pop-box large">
+                <div class="pop-wrap">
+                    <h1 class="blind">완료확인서</h1>
+                    <header class="pop-header">
+                        <div class="pop-header-title-wrap">
+                            <h3 class="pop-header-title">완료확인서</h3>
+                            <button class="btn-pop-close js-pop-close" @click="closePopup">닫기</button>
+                        </div>
+                    </header>
+                    <div class="pop-container">
+                        <div class="pop-common-box">
+                            <div class="service-detailed">
+                                <div class="e-form-box">
+                                    <div class="e-form-content">
+                                           <iframe name="eformView" style="width: 100%; height: 1000px; border: 1px solid red;"></iframe>
+                                           
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.thymeleaf.org">
+<meta charset="UTF-8"/>
+<container layout:fragment="container">
+	<div id="container" class="container">
+		<div id="content" class="content">
+			<section layout:fragment="content"/>
+		</div>
+	</div>
+	<!-- alert confirm -->
+	<div th:replace="~{common/popup/alertPopup}"></div>
+	<!-- loading -->
+	<div class="layer-pop-wrap loading" id="cmmLoading" style="display:none;">
+		<div class="spinnerWrap">
+			<img class="spinner" th:src="@{/images/common/img_loading01.png}"/>
+		</div>
+	</div>
+</container>

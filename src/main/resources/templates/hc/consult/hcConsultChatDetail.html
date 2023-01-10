@@ -1,0 +1,2081 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/default}">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1 minimum-scale=1" />
+
+<script th:inline="javascript" type="text/javascript">
+    var vue
+    $(document).ready(function(){
+        vue = new Vue({
+            el: '#app',
+            data: {
+                userId:[[${session.userId}]],
+                userTpCd:[[${session.userTpCd}]],
+                userNm:[[${session.userNm}]],
+                sysId:[[${session.sysCode}]],
+                adminYn:[[${session.adminYn}]],
+                open: false,                                    // 팝업 여부
+				sendData:{},                                    // 목록 데이터 전달 파라미터
+                codeList:[],                                    // 담당자    
+                codeList1:[],                                   // 컨설팅 진행상태
+                codeList2:[],                                   // 식품유형
+                socket:null,                                
+                replyMsg:'',                                    // 댓글 입력
+                mainMsg:'',                                     // 일반 글 입력
+                isReply:0,                  
+                toUserId:'',                                    // 상대 방송 명
+                fileInfoList: [],                               // 체팅 파일 정보
+                fileInfoListBox:[],                             // 뎃글 리스트 담은 박스
+                chatHistory:[],                                 // 체팅 상태 리스트
+                statusList:[],                                  // 상태 리스트
+                memberList:[],                                  // 멤버 리스트
+                chatFileList:[],                                // 체팅 파일 리스트
+                chatMoreFileList:[],                            // 더보기 파일 리스트
+                file_type_list:[],                  
+                searchMemberView:false,                         // 체팅 멤버 조회 view 여부
+                mansionMemberList:[],                           //멘션 멤버 리스트
+                selectStatusCd:'',                              // 본글 발송시 콤보박스 값
+                fileObj:[],                                     // 파일 개체 담기
+                loading:false,                                  // 로딩 여부
+                showMoreView: false,                            // 더보기 숨김여부
+                closeBtnAll: "on",                              // 수행 일지 더보기
+                closeAllMore: "on-all",                            // 수행 일지 전체 닫기
+                selFileSave:'',                                 // 본글 파일 선택 저장시
+                alllFileSave:'',                                // 본글 전체 파일 저장시
+                fs_status_cd: '',                               // 진행상태
+                start_date:moment().format('YYYY-MM-DD'),       // 시작일
+                coslMDayList:[],                                // 수행일지 내역
+                coslEtcDayList:[],                              // 서비스외 방문일 내역
+                searchMemberReplyView:false,
+                startDate: moment().format('YYYY-MM-DD'),       // 캘린더 날짜 선택 좌
+                endDate: moment().format('YYYY-MM-DD'),         // 캘린더 날짜 선택 우
+                toggleAllComJournalsBtn:"",
+                licnt:0,
+                popType:'01',
+                md_day_param:{},
+                onlineUsers:[],
+                chatCondition:{ // 체팅 데이터 
+                    onlineCount:"",
+                    joinChatName:"",
+                    outChatName:""
+                },
+                sendMailParam:{
+                    user_id:[[${session.userId}]],
+                    sys_id:[[${session.sysCode}]],
+                    send_nm:[[${session.userNm}]],
+                    receive_nm:'', 
+                    receive_email:'',
+                    send_url:'',
+                    send_text:'',  
+                    status:'',   
+                    cst_nm:'',   
+                    prod_nm:'',
+                    send_chat_st_nm:'',
+                    send_tp_cd:'02',
+                    rgstr_dt:'',
+                    memInfoList:[]
+                },
+                sendMsg:{                                       // 문자 발송 입력
+                    contents:'',
+                    fs_chat_id:'',
+                    fs_chat_ref_seq:'',
+                    fs_chat_seq:'',
+                    fs_no:'',
+                    fs_seq:'',
+                    fs_status_cd:'',
+                    mdfr_dt: moment().format("yy/mm/dd hh:mm:ss"),
+                    sys_id:'',
+                    memList:[]
+                },
+                searchFileOpt:{                                 // 파일 조회 파라미터
+                    sys_id: 'HC',
+                    fs_no:'',
+                    fs_seq:'',
+                    atch_nm:'',
+                    p_type:'1',
+                    d_type:'01',
+                    fs_chat_yn:'N',
+                    fs_chat_yn_pre:'Y',
+                    fs_chat_seq:'',
+                    fs_file_type:'',
+                    fs_chat_id:'',
+                    fs_chat_nm:'',
+                    md_status_cd:'01',
+                    fs_interest_yn:'',
+                }
+            },
+            mounted() { // 화면 초기화 실행
+                var _self = this;
+                // 목록에서 받아온 리스트
+                var paramsdata = window.localStorage.getItem('consultGridRow');
+                if(!!!paramsdata){
+                    $("#opener").click();
+                }else{
+                    _self.sendData = JSON.parse(paramsdata);
+                    _self.selectStatusCd = _self.sendData.fs_status_cd
+                    _self.sendData.mdfr_dt = moment(_self.sendData.mdfr_dt).format("YY/MM/DD")
+                    _self.searchFileOpt.fs_seq = _self.sendData.fs_seq;
+                    _self.searchFileOpt.sys_id = _self.sendData.sys_id;
+                    _self.searchFileOpt.fs_no = _self.sendData.fs_no;
+                    _self.getChatList()               // 체팅 리스트 조회
+                    _self.getCoslMDayList()           // 수행일지 내역 조회
+                    _self.getCoslEtcDayList()         // 서비스외 방문일 등록
+                    // _self.getChatStatusList()         // 협업툴안에서 진행상태 표시 
+                    _self.getChatHistoryList()        // 체팅 상태이력 조회
+                    _self.getChatFileList()           // 체팅 파일 리스트 조회
+                    _self.getChatMemberList()         // 체팅 멤버 조회
+                    _self.modifyReadYn()              // 글 읽은 여부 변경
+                }
+                // 공통 코드 조회
+                getCodeListForArrNm([{cmm_cd:'FS004', arr_nm:'codeList1'}], _self);
+                setTimeout(() => _self.goBtm(), 1000);
+            },
+            watch:{
+                chatHistory(){ // 체팅 데이터 감지
+                    let _self = this;
+                    vue.$data.fileInfoListBox = [];
+                    $.each(vue.$data.chatHistory, function(i, obj) {
+                        vue.$data.fileInfoListBox.push({key:i,msg:'',fileInfo:[]});
+                    })
+                    if (_self.isReply != 2) { // 본글에 경우
+                        setTimeout(() => vue.goBtm(), 1000);
+                    }
+                }
+            },
+            methods: {
+                openSocket() { // 소켓 시작
+                    if (typeof WebSocket == "undefined") {
+                        console.log("웹소켓 지원 하지않은 프라우저 입니다.");
+                    } else {
+                        console.log("웹소켓 지원 프라우저 입니다.");
+                        var socketUrl ="https://fsccsdev.cesco.co.kr/chatServer/" + this._self.sendData.sys_id + "/" + this._self.sendData.fs_no + "/" +  this.userId;
+                        // var socketUrl ="http://localhost:8080/chatServer/" + this._self.sendData.sys_id + "/" + this._self.sendData.fs_no + "/" +  this.userId;
+                        socketUrl = socketUrl.replace("https", "wss").replace("http", "ws");
+                    
+                    if (this.socket != null) {
+                        this.socket.close();
+                        this.socket = null;
+                    }
+                    this.socket = new WebSocket(socketUrl);
+
+                    //socket open
+                    this.socket.onopen =function (res) {
+                        console.log("websocket 오픈 -> 체팅 창 연결 되었습니다.",res);
+                    };
+                    //message get event
+                    this.socket.onmessage = function(msg){
+                        if(!!msg.data){
+                            let msgBox = JSON.parse(msg.data);
+                            if (msgBox.isJoin == "true") {
+                                vue.$data.chatCondition.onlineCount = msgBox.onlineUserId.split(",").length -1;
+                            }
+                            vue.$data.sendMsg.memList = msgBox.onlineUserId.split(",").filter((el)=>el != "");
+                            let onlinemembers = msgBox.onlineUserId.split(",");
+                            _self.sendMsg.memList = _self.memberList;
+                            onlinemembers.forEach((item,index)=>{
+                                if (!!item) {
+                                    _self.sendMsg.memList = _self.sendMsg.memList.filter((pre) =>pre.fs_chat_id != item)
+                                }
+                            })
+
+
+                            if (msgBox.isClose === "false") {// 온라인 상태 스타일 변경
+                                let userlist = msgBox.onlineUserId.split(",")
+                                if (userlist.length > 0) {
+                                    userlist.forEach((item,idx)=>{
+                                        if (!!item) {
+                                            $("#" + item).addClass("on")
+                                        }
+                                    })
+                                }
+                            } else {// 오프라인 상태 스타일 변경
+                                $("#" + msgBox.offlineUserId).removeClass("on")
+                            }
+                            vue.getChatList();
+                            vue.getChatFileList()           // 체팅 파일 리스트 조회
+                            console.log(msgBox)
+                            if (vue.$data.isReply == 1) { // 댓글에 경우
+                                setTimeout(() => vue.goBtm(), 1000);
+                                vue.getChatHistoryList()
+                            }
+                        }
+
+                        // cmmAlert("message get event:" + msg.data + " userid : " + this.userId);
+                        //메시지가 들어와 프런트 엔드 트리거 로직을 처리하기 시작했음을 발견했습니다.
+                    };
+                    //close event
+                    this.socket.onclose = function(res){
+                        alert(res)
+                        localStorage.removeItem('consultGridRow');
+                        history.back()
+                    };
+                    //error event
+                    this.socket.onerror = function() {
+                        console.log("websocket error");
+                        cmmAlert("채팅통신에 문제 발생했습니다.관리자에 문의 하세요.")
+                    };
+                    }
+                },
+                sendMessage() {// 체팅 글 발송
+                    if (typeof WebSocket == "undefined") {
+                        console.log("웹소켓 지원 하지않은 프라우저 입니다.");
+                    } else {
+                        console.log("웹소켓 지원 프라우저 입니다.");
+                        console.log('{"toUserId":"' +this.toUserId +'","contentText":"' +this.sendMsg +'"}');
+                        this.socket.send('{"toUserId":"' +this.toUserId +'","contentText":"' +this.sendMsg +'"}');
+                    }
+                },
+                checkMembers(){ // 관리자 체크
+                    let _self = this;
+                    let checkInfo = _self.memberList.filter((pre)=>pre.fs_chat_id === _self.userId)
+                    if (checkInfo.length < 1) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                },
+                handleKeyPress(e,item,index,ck){ // 담당자 선택 후 값 바인딩
+                    let _self = this;
+                    if (e instanceof PointerEvent) { // 클릭 이벤트 체크
+                        if (ck === null) { // 댓글 인 경우
+                            if (_self.mainMsg.lastIndexOf("@") > 0) {
+                                _self.mainMsg = _self.mainMsg.substr(0,_self.mainMsg.lastIndexOf("@")) + "@" + item.fs_chat_nm + "/";
+                            } else {
+                                _self.mainMsg = "@" + item.fs_chat_nm + "/";
+                                _self.searchMemberView = false
+                            }
+                        } else {
+                            _self.fileInfoListBox[index].msg = "@" + item.fs_chat_nm + "/";
+                            $("#call-list-reply-" + index).hide()
+                        }
+                        _self.licnt = 0;
+                    }
+                    // if (e.keyCode == 13) { // 엔터키 적용
+                    //     if (ck === null) {// 댓글 인 경우
+                    //         _self.mainMsg = "@" + item.fs_chat_nm + " ";
+                    //         _self.searchMemberView = false
+                    //     } else {
+                    //         _self.fileInfoListBox[index].msg = "@" + item.fs_chat_nm;
+                    //         _self.searchMemberReplyView = false
+                    //     }
+                    // }
+                },
+                handleSendMsg(e,idx,seq,sendType,itembox){ // 체팅 글 발송 이벤트
+                    let _self = this;
+                    // 관리자 그리고 참여 멤버에 속하지 않은 사람 체팅 못하게 막음
+                    if(_self.checkMembers()) return;
+
+                    if (_self.searchMemberView) { // 조회 view 열린경우
+                        if(e.keyCode == 38 || e.keyCode == 40){
+                            let idNm = "";
+                            if (sendType == '02') { // 답글 인 경우
+                                idNm = '#call-list-reply-' + idx + ' li'
+                            } else {
+                                idNm = '#call-list-base li'
+                            }
+    
+                            if( e.keyCode == 40){
+                                _self.licnt++;
+                            }else{
+                                _self.licnt--;
+                            }
+    
+                            if(_self.licnt == $(idNm).length){
+                                _self.licnt = 0;
+                            }
+    
+                            if(_self.licnt < 0){
+                                _self.licnt = $(idNm).length - 1;
+                            }
+                            
+                            $.each($(idNm),(idx, obj)=>{                            
+                                if(idx == _self.licnt){
+                                    $(obj).css("background-color","#f1f1f1");
+                                    $(obj).css("cursor","pointer");
+                                }else{
+                                    $(obj).css("background-color","");
+                                    $(obj).css("cursor","");
+                                }                            
+                            });
+                        }
+                    }
+                    if(e.keyCode == 13 || (e instanceof PointerEvent)){ // enter key 경우
+                        if (_self.searchMemberView) { // 조회 view 열린경우
+                            let idNm = "";
+                            if (sendType == '02') { // 답글 인 경우
+                                idNm = '#call-list-reply-' + idx + 'li'
+                            } else {
+                                idNm = '#call-list-base li'
+                            }
+                            $.each($(idNm),(idx, obj)=>{                      
+                                if(idx == _self.licnt){
+                                    $(obj).click()
+                                    _self.licnt = 0;
+                                }                           
+                            });
+                        } else {
+                            _self.isReply = 1;
+                            _self.sendMsg.contents = '';
+                            let box = "";
+                            if (_self.checkMansion(idx,sendType)) {
+                                if (sendType == "01") {
+                                    box = _self.mainMsg.split("/");
+                                } else {
+                                    box = _self.fileInfoListBox[idx].msg.split("/");
+                                }
+                                // 다중 맨션인 경우
+                                if (box.length > 2) {
+                                    _self.sendMailParam.memInfoList = [];
+                                    box.forEach((item,index)=>{
+                                        let infobox = _self.memberList.filter((pre)=>pre.fs_chat_nm === item.slice(1))
+                                        if (infobox.length > 0) {
+                                            _self.sendMailParam.memInfoList.push(infobox[0]);
+                                        }
+                                    })
+                                }
+                                // 메일 발송
+                                _self.sendMail('',_self.sendMailParam)
+                            }
+                            if(sendType == '02'){ // 뎃글에 경우
+                                _self.isReply = 2;
+                                if (!!_self.fileInfoListBox[idx].msg) {
+                                    _self.sendMsg.contents = _self.fileInfoListBox[idx].msg
+                                    _self.sendMsg.fs_chat_ref_seq = parseInt(seq);
+                                    $("#chat_reply_list_" + idx).show()
+                                    if (_self.fileInfoListBox[idx].msg.split("/")[0].indexOf("@") != 0) {
+                                        let box2 = [] // 담당자 명 검색 결과 담기
+                                        box2 = _self.memberList.filter(item => item.fs_chat_nm == itembox.fs_chat_nm)
+                                        _self.sendMailParam.receive_email   = box2[0].email;                    // 받는 사람 메일
+                                        _self.sendMailParam.receive_nm      = box2[0].fs_chat_nm;               // 받는 사람 명
+                                        _self.sendMailParam.cst_nm          = box2[0].fs_chat_cst_nm;           // 받는 사람 회사명
+                                        _self.sendMailParam.send_text       = _self.fileInfoListBox[idx].msg;   // 전송 내용
+                                        _self.sendMailParam.send_chat_st_nm = _self.sendData.fs_status_nm;      // 진행 상태 명
+                                        _self.sendMailParam.prod_nm         = _self.sendData.prod_nm;            // 상품 명
+                                        _self.sendMailParam.rgstr_dt        = _self.sendData.receive_date;      // 상품 등록 날짜
+                                        let mansionYn = _self.memberList.filter((item)=>item.email == box2[0].email);
+                                        if (mansionYn.notice2_yn != "N") {
+                                            console.log(mansionYn.notice2_yn)
+                                            _self.sendMail('',_self.sendMailParam)
+                                        }
+                                    }
+                                } else {
+                                    return;
+                                }
+                            } else { //일반 글 경우
+                                if (!!_self.mainMsg) {
+                                    _self.sendMsg.contents = _self.mainMsg
+                                    _self.sendMsg.fs_chat_ref_seq = null;
+                                } else {
+                                    return;
+                                }
+                            }
+                            // 글 발송시 진행 상태 존재여부 판단하여 없으면 목록 상태 로 변경
+                            if (!!!_self.sendMsg.fs_status_cd) {
+                                _self.sendMsg.fs_status_cd = _self.sendData.fs_status_cd
+                            } else {
+                                _self.sendMsg.fs_status_cd = _self.fs_status_cd;
+                            }
+                            _self.sendMsg.fs_chat_id = _self.userId;
+                            _self.sendMsg.fs_no = _self.sendData.fs_no;
+                            _self.sendMsg.sys_id = _self.sendData.sys_id;
+                            _self.sendMsg.mdfr_dt = moment().format("YYYY/MM/DD hh:mm:ss");
+                            _self.sendMsg.fs_chat_seq = (parseInt(_self.chatHistory[0].max_fs_chat_seq) + 1)+'';
+                            _self.sendMsg.fs_chat_nm =  _self.sendData.cst_mng_nm;
+        
+                            // 체팅 글 저장
+                            _self.setChatDtLList()
+        
+                            if(sendType == '02'){
+                                if (_self.fileInfoListBox[idx].fileInfo.length > 0) {
+                                    // 체팅 파일 있으면 저장
+                                    _self.saveChatFiles(idx,seq,sendType);
+                                }
+                            } else {
+                                if (_self.fileInfoList.length > 0) {
+                                    // 본글 체팅 파일 있으면 저장
+                                    _self.saveChatFiles(idx,seq,sendType);
+                                }
+                            }
+
+                        }
+                    }
+                },
+                modifyReadYn(){ // 컨설팅 체팅 글 읽은 여부
+                    let _this = this;
+                    let url = '/api/consulting/consult/modifyReadYn';
+                    // 컨설팅 체팅 글 읽은 여부 수정
+                    axiosCall('put', url, _this.sendData, function(res) {console.log(res.data)});
+                },
+                checkMansion(idx,sendType){ // 멘션 메일 여부 체크
+                    let _self = this;
+                    let box = ""; // 메세지 내용
+                    if (sendType == "01") {
+                        box = _self.mainMsg.split("/");
+                    } else {
+                        box = _self.fileInfoListBox[idx].msg.split("/");
+                    }
+                    if ((box.length > 1) && (box[0].indexOf("@") == 0)) {
+                        let box2 = [] // 담당자 명 검색 결과 담기
+                        box2 = _self.memberList.filter(item => item.fs_chat_nm == box[0].slice(1))
+                        if (box2.length>0) { // 담당자 존재하면 true  _self.memberList
+                            let mansionYn = _self.memberList.filter((item)=>item.email == box2[0].email);
+                            if (mansionYn.notice2_yn == "N") {
+                                return false
+                            }
+                            _self.sendMailParam.receive_email = box2[0].email;
+                            _self.sendMailParam.receive_nm = box2[0].fs_chat_nm;
+                            _self.sendMailParam.send_text = box.pop();
+                            _self.sendMailParam.send_chat_st_nm =_self.sendData.fs_status_nm;
+                            _self.sendMailParam.prod_nm =_self.sendData.prod_nm;
+                            _self.sendMailParam.cst_nm = box2[0].fs_chat_cst_nm
+                            _self.sendMailParam.rgstr_dt = _self.sendData.receive_date
+                            return true;
+                        }
+                    } else {
+                        return false;
+                    }
+                },
+                findFile(e,type,iddx) {// 파일 선택
+                    let _this = this;
+                    _this.fileObj = [];
+                    let fileSize = ((e.target.files[0].size)/1024/1024).toFixed(4);
+                    // if(fileSize > 5000){
+                    //     cmmAlert('5G이상 등록 할 수 없습니다.');
+                    //     return false;
+                    // }
+
+                    if(e.target.files.length > 0){
+                        for (let idx = 0; idx < e.target.files.length; idx++) {
+                            var fileInfo = {atch_kn_cd:'F00001',atch_nm:'',atch_size:'',atch_ref_id:'FS001',status:''}
+                                fileInfo.atch_nm = e.target.files[idx].name;
+                                fileInfo.atch_size = e.target.files[idx].size;
+                                _this.fileObj.push(e.target.files[idx])
+                            if (type == '02') { // 댓글 파일 정보 추가
+                                $("#reply_chat_"+ iddx).show()
+                                _this.fileInfoListBox[iddx].fileInfo.push(fileInfo)
+                            } else {
+                                _this.fileInfoList.push(fileInfo)
+                            }
+                        }
+                        _this.$refs.autoFocus.focus();
+                    }
+                },
+                findDelFile(name,type,index){ // 파일 선택취소
+                    let _self = this;
+                    if (type == '02') { // 댓글인 경우
+                        _self.fileInfoListBox[index].fileInfo = _self.fileInfoListBox[index].fileInfo.filter((pre)=>pre.atch_nm != name)
+                        if (_self.fileInfoListBox[index].fileInfo.length < 1) {
+                            $("#reply_chat_"+ index).hide()
+                        }
+                    } else { // 일반글에 경우
+                        _self.fileInfoList = _self.fileInfoList.filter((pre)=>pre.atch_nm != name)
+                    }
+                    
+                },
+                movePage(idx){// 목록 페이지 이동
+                    let _this = this;
+                    let url = ''
+                    if(idx == '0'){
+                            url = '/consulting/consult/hcConsultList';
+                    }else{
+                        cmmAlert('페이지 준비중입니다.');
+                            return;
+                    }
+                    window.location = url;
+                },
+                getChatList() {// 컨설팅 체팅 글 목록
+                    let url = '/api/consulting/consult/uspFsGetChatDtLList';
+                    let _this = this;
+                    axiosCall('get', url, _this.searchFileOpt,res=>{
+                        if (!!res.data) {
+                            $.each(res.data, function(i, obj) {
+                                _this.fileInfoListBox.push({key:i,msg:'',fileInfo:[]});
+                            })
+                            _this.chatHistory=res.data
+                            // 최신 답글로 이동
+                            if (vue.$data.isReply > 1) {
+                                let idx = vue.$data.chatHistory[0].max_fs_chat_seq;
+                                let byid = '#chat-list-item-reply-' + idx;
+                                setTimeout(() => $(byid)[0].scrollIntoView({behavior: "smooth", inline: "nearest"}), 500);
+                                // $(byid)[0].scrollIntoView({behavior: "smooth", inline: "nearest"});
+                                console.log("socket.onmessagesocket.onmessagesocket.onmessagesocket.onmessagesocket.onmessagesocket.onmessagesocket.onmessage")
+                            }
+                        setTimeout(() => vue.goBtm(), 500);
+                        } else {
+                            cmmAlert("체팅 데이터 없습니다.")
+                        }
+                    }, true);
+                },
+                getChatFileList () {//컨설팅 체팅 파일 목록
+                    let url = '/api/consulting/consult/uspFsGetChatAtchList';
+                    let _this = this;
+                    axiosCall('get', url,_this.searchFileOpt,res=> {
+                        if (!!res.data) {
+                            res.data.forEach(item=>{item.checked=false})
+                            _this.chatFileList = res.data
+                            _this.chatMoreFileList = res.data
+                        }
+                    },true);
+                },
+                getChatMemberList () {// 컨설팅 체팅 방 멤버 조회
+                    let url = '/api/consulting/consult/uspFsGetChatMemAddList';
+                    let _this = this;
+                    
+                    axiosCall('get', url, _this.searchFileOpt,res=>{
+                        _this.memberList = res.data;
+                        _this.mansionMemberList = res.data;
+                        // _this.sendMsg.memList = res.data
+                        _self.openSocket()                // 소겟 통신 시작
+                    }, "");
+                },
+                getCoslMDayList() {// 수행일지내역
+                    let url = '/api/hcConsulting/getCoslMDayList';
+                    let _this = this;
+                    axiosCall('get', url, _this.searchFileOpt, function(res){
+                        if(!!res.data){
+                            _this.coslMDayList = res.data;
+                        }
+                    }, "");
+                },
+                getCoslEtcDayList(val) {// 시간외방문내역조회
+                    let url = '/api/hcConsulting/getCoslEtcDayList';
+                    let _this = this;
+                    if (!!val) {
+                        _this.open = false;
+                    }
+                    axiosCall('get', url, _this.searchFileOpt, function(res){
+                        if(!!res.data){
+                            _this.coslEtcDayList = res.data;
+                        }
+                    }, "");
+                },
+                getChatHistoryList () {// 컨설팅 진행 상태 조회
+                    let url = '/api/hcConsulting/getChatStatusList';
+                    let _this = this;
+                    axiosCall('get', url, {sys_id:_this.sendData.sys_id,fs_no:_this.sendData.fs_no},res=>{
+                        if (!!res.data) {
+                            res.data.forEach(element => {
+                               console.log(parseInt(element.fs_status_cd)) 
+                            });
+                            _this.statusList = res.data
+                        
+                        }
+                    }, true);
+                },
+                // getChatStatusList() {// 협업툴안에서 진행상태 표시
+                //     let url = '/api/hcConsulting/getChatStatusList';
+                //     let _this = this;
+                //     axiosCall('get', url, {}, function(res){
+                //         if(!!res.data){
+                //             _this.statusList = res.data;
+                //         }
+                //     }, "");
+                // },
+                delMember(e,id){ // 컨설팅 체팅 방 멤버 삭제
+                    e.preventDefault();
+                    let _self = this;
+                    if(_self.checkMembers()) return;
+                    let url = '/api/consulting/consult/uspFsSetChatMem';
+                    // if (_self.sendData.fs_mng_id != id) {
+                    //     cmmAlert("세스코 담당자 삭제 불가입니다.")
+                    //     return;
+                    // }
+                    // if (_self.sendData.cst_mng_id != id) {
+                    //     cmmAlert("고객주 담당자 삭제 불가입니다.")
+                    //     return;
+                    // }
+                    _self.searchFileOpt.fs_chat_id = id;
+                    axiosCall('put', url, _self.searchFileOpt, res=> {
+                        cmmAlert(res.data)
+                        _self.memberList = _self.memberList.filter((pre)=>pre.fs_chat_id != id)
+                        vue.endPopCall()
+                    });
+                },
+                async setChatDtLList () {// 컨설팅 체팅 글 추가
+                    let url = '/api/consulting/consult/uspFsSetChatDtLList';
+                    let _this = this;
+                    await axios.post(url, _this.sendMsg).then((res) => {
+                        _this.socket.send(JSON.stringify(_this.sendMsg));
+                        _this.mainMsg="";
+                    }).catch((err) => {
+                        cmmAlert(err.response.data.message)
+                    });
+                },
+               saveChatFiles(idx,seq,sendType){ // 파일 저장
+                    let _self = this;
+                    _self.loading = true
+                    let url = "/api/consulting/consult/uspFsSetChatFileList";
+                    var formData = new FormData();
+                    formData.append("chatInfo", new Blob([JSON.stringify(_self.sendMsg)], {type: "application/json"}));
+                    
+                    if (_self.fileObj.length > 0) {
+                        for (let i = 0; i < _self.fileObj.length; i++) {
+                            formData.append('files', _self.fileObj[i]);
+                        }
+                        if (sendType != "02") {
+                            formData.append("chatFileInfo", new Blob([JSON.stringify(_self.fileInfoList)], {type: "application/json"}));
+                        } else {
+                            formData.append("chatFileInfo", new Blob([JSON.stringify(_self.fileInfoListBox[idx].fileInfo)], {type: "application/json"}));
+                        }
+                    }
+                    // 글 등록 파일 저장
+                    axios.post(url,formData,{
+                        headers:{
+                            "Content-Type": "multipart/form-data",
+                            'x-requested-with' : 'AJAX'
+                        }
+                    }).then((res) => {
+                        _self.mainMsg= "";
+                        _self.fileObj = [];
+                        _self.fileInfoList = [];
+                        if (_self.isReply == 2) {
+                            _self.fileInfoListBox[idx].fileInfo = [];
+                            _self.replyMsg= "";
+                        }
+                        _self.getChatList()
+                        _self.getChatFileList()
+                    }).catch((err) => {
+                        cmmAlert(err.response.data.message)
+                    }).finally(()=>{
+                        _self.loading = false
+                    });
+                },
+                selectFileSave(e,item){ // 본글 선택 파일 저장
+                    e.preventDefault()
+                    let _this = this;
+                    let files = _this.chatHistory.filter((pre)=>(((pre.fs_chat_id == null) && (pre.fs_chat_seq == item.fs_chat_seq))))
+                    files.forEach((el,iii)=>{
+                        if (el.atch_nm == _this.selFileSave) {
+                            _this.onDownload(el.ser_file_nm);
+                        }
+                    })
+                },
+                allSaveFile(e,item){    // 전체 파일 저장
+                    e.preventDefault()
+                    _self.loading = true
+                    let url = '/api/downloadZipFile/chat';
+                    let fileInfoList = {
+                        url:"",
+                        atch_nm:""
+                    }
+                    let formdata = [];
+                    let {name} = e.target;
+                    let _this = this;
+                    if (name == 'base') {
+                        let files = _this.chatHistory.filter((pre)=>(((pre.fs_chat_id == null) && (pre.fs_chat_seq == item.fs_chat_seq))));
+                        files.forEach((el,iii)=>{
+                            fileInfoList.atch_nm += el.ser_file_nm + "_";
+                            fileInfoList.url = el.url;
+                            // formdata.push(fileInfoList)
+                        })
+                    } else if(name == 'reply'){
+                        let filesRey = _this.chatHistory.filter((pre)=>pre.fs_chat_seq == parseInt(!!item.seq ? item.seq.split('>')[1] : '')).splice(1);
+                        filesRey.forEach((el,iii)=>{
+                            fileInfoList.atch_nm += el.ser_file_nm + "_";
+                            fileInfoList.url = el.url;
+                            // formdata.push(fileInfoList)
+                        })
+                    } else {
+                        let chatMoreFileListBox = _this.chatMoreFileList.filter(item=>item.checked == true)
+                        if (chatMoreFileListBox.length < 1) {
+                            return ;
+                        }
+                        chatMoreFileListBox.forEach((el,iii)=>{
+                            fileInfoList.atch_nm += el.ser_file_nm + "_";
+                            fileInfoList.url = el.url;
+                        })
+                    }
+                   
+                    axios({
+                        url: '/api/downloadZipFile/chat/' + fileInfoList.atch_nm, //your url
+                        method: 'GET',
+                        responseType: 'blob', // important
+                    }).then((res) => {
+                        // create file link in browser's memory "Content-Disposition"
+                        const href = URL.createObjectURL(res.data);
+                        const filename = res.headers["content-disposition"].split("=")[1]
+                        // create "a" HTML element with href to file & click
+                        const link = document.createElement('a');
+                        link.href = href;
+                        var ajaxName = decodeURIComponent(filename);
+		                link.setAttribute('download',decodeURIComponent(ajaxName.replace("/\+/g", " "))); //or any other extension
+                        document.body.appendChild(link);
+                        link.click();
+
+                        // clean up "a" element & remove ObjectURL
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(href);
+                    }).catch((e)=>{
+                        alert(e.response.data.message)
+                    }).finally(function(){
+                        _self.loading = false
+                    });
+
+                },
+                downloadFullJournal(e){ // 수행일지다운로드
+                    e.preventDefault()
+                    // cmmAlert("전체 파일 저장 서버권한 없습니다.진행 중....")
+                    // return;
+
+                    let _this = this;
+                    let fsnoInfo = {
+                        sys_id:_this.sysId,
+                        fs_no:_this.sendData.fs_no
+                    }
+                    _self.loading = true
+                    axios({
+                        url: '/api/hcConsulting/downloadFullJournal/hcChat/' + "수행일지다운로드",//your url
+                        method: 'GET',
+                        responseType: 'blob', // important
+                        params:fsnoInfo
+                    }).then((res) => {
+                        
+                        // create file link in browser's memory "Content-Disposition"
+                        const href = URL.createObjectURL(res.data);
+                        const filename = res.headers["content-disposition"].split("=")[1]
+                        // create "a" HTML element with href to file & click
+                        const link = document.createElement('a');
+                        link.href = href;
+                        var ajaxName = decodeURIComponent(filename);
+                        link.setAttribute('download',decodeURIComponent(ajaxName.replace("/\+/g", " "))); //or any other extension
+                        document.body.appendChild(link);
+                        link.click();
+
+                        // clean up "a" element & remove ObjectURL
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(href);
+                    }).catch((e)=>{
+                    
+                        if (e.response.status == 401) {
+                            cmmAlert("파일 정보 없습니다.")
+                        } else {
+                            cmmAlert(e)
+                        }
+                    }).finally(function(){
+                        _self.loading = false
+                    });
+                },
+                onChangeFileDownLoad(e){ // 선택 파일 명 저장
+                    let _self = this;
+                    _self.selFileSave = e.target.value;
+                },
+                setfsStatusCd(e,item) { // 운영자 진행 상태 변경
+                    let _self = this;
+                    let url = "/api/consulting/consult/modifyFsStatusCd";
+                    let params = {sys_id:item.sys_id,fs_no:item.fs_no,fs_chat_seq:item.fs_chat_seq,fs_status_cd:_self.fs_status_cd}
+                    
+                    // 글 등록 파일 저장
+                    axiosCall('put', url, params, res=>{
+                        if (!!res.data) {
+                            _self.getChatList()
+                            cmmAlert(res.data)
+                        }
+                    });
+                },
+                sendMail(e,item){ // 맨션 안내메일 발송
+                    let _self = this;
+                    let url = "/api/consulting/consult/sendMail";
+                    item.d_type = "04";
+                    axiosCall('post', url,item,res =>{
+                        console.log(res.data)
+                    })
+                },
+                sendMailList(item){ // 맨션 안내메일 발송
+                    let _self = this;
+                    let url = "/api/hcConsulting/sendMailList";
+                    let cescoMembers = _self.memberList.filter((pre)=>pre.fs_chat_id != _self.userId && pre.fs_sign_yn == "Y")
+                    if (cescoMembers.length < 1) {
+                        _self.getCoslMDayList()
+                    } else {
+                        let sendMailCescoMembers = [];
+                        cescoMembers.forEach((el,index)=>{
+                            console.log("cescoMembers.forEach",el.email)
+                            _self.sendMailParam.receive_email   = el.email;                     // 받는 사람 메일
+                            _self.sendMailParam.receive_nm      = el.fs_chat_nm;                // 받는 사람 명
+                            _self.sendMailParam.cst_nm          = el.fs_chat_cst_nm;            // 받는 사람 회사명
+                            _self.sendMailParam.send_text       = "수행일지";                    // 전송 내용
+                            _self.sendMailParam.send_chat_st_nm = item.md_status_cd;            // 진행 상태 명
+                            _self.sendMailParam.prod_nm         = item.md_day + "MD ->" + "수행일지"; // 상품 명
+                            _self.sendMailParam.rgstr_dt        = item.md_date;                 // 상품 등록 날짜
+                            sendMailCescoMembers.push(_self.sendMailParam)
+                        })
+                        axiosCall('post', url,sendMailCescoMembers,res =>{
+                            _self.getCoslMDayList()
+                        })
+                    }
+                },
+                onDownload(filename){ // 파일 다운로드
+                    axiosCallDownLoad(filename)
+                },
+                openPop(url) { // 팝업 이벤트
+                    this.open = true;
+                },
+                goBtm(url) { // 현재 글 이동
+                    let _self = this;
+                    let tergetMove = _self.$refs.tergetMove;
+                    if (_self.isReply == 0) {
+                        tergetMove.scrollTo({ top: tergetMove.scrollHeight}); // behavior: 'smooth' 모션 효과
+                    } else {
+                        tergetMove.scrollTo({ top: tergetMove.scrollHeight,behavior: _self.isReply > 0 ? 'smooth' : ''});
+                    }
+                },
+                viewMore(int){ // 파일 더보기
+                    let _self = this;
+                    _self.searchFileOpt.fs_chat_nm = '';
+                    _self.searchFileOpt.fs_file_type = '';
+                    _self.searchFileOpt.fs_interest_yn = '';
+                    $("#checkedAll")[0].checked = false
+                    _self.chatMoreFileList.forEach(item=>{
+                        item.checked = false
+                    })
+                    if (_self.showMoreView) {
+                        _self.showMoreView = false
+                    } else {
+                        _self.showMoreView = true
+                    }
+                },
+                openAddContactPopupDiv(val){ // 담당자 추가 팝업
+                    let _this = this;
+                    let popupNm = val;
+                    let divId = val + 'Div';
+                    let param = {};
+
+                    // 담당자 추가 팝업
+                    if(val == "addContactPopup") {
+                        param.sysId = _this.sendData.sys_id;
+                        param.fsNo = _this.sendData.fs_no;
+                    }
+
+                    // 공통팝업호출
+                    openCmmPopup(popupNm, divId, param); 
+                },
+                completeHistory(ele,ii){ // 체팅 상태 스타일링 이벤트
+                    let _self = this;
+                    if (ii == 0) {
+                        return 'ing'
+                    }
+                },
+                chatFileTypeList(num){ // 더보기 업션 데이터 조립
+                    _self = this;
+                    let box =[];
+                    let res = [];
+                    _self.chatFileList.forEach((element,idx) => {
+                        if (num) {
+                            box.push(element.fs_chat_nm);
+                        } else {
+                            box.push(element.file_type);
+                        }
+                    });
+                    res = new Set(box);
+                    return res;
+
+                },
+                onChangeFileOpt(num,val){ // 더보기 업션 데이터 이벤트
+                    var _self = this;
+                    switch (num) {
+                        case 0: // 파일 유형별
+                            if (!!val) {
+                                _self.chatMoreFileList = _self.chatFileList.filter(item=>item.file_type == _self.searchFileOpt.fs_file_type);
+                            } else {
+                                _self.chatMoreFileList = _self.chatFileList.filter(item=>item.file_type != "");
+                            }
+                            break;
+                        case 1: // 등로자 별
+                            if (!!val) {
+                                _self.chatMoreFileList = _self.chatFileList.filter(item=>item.fs_chat_nm == _self.searchFileOpt.fs_chat_nm);
+                            } else {
+                                _self.chatMoreFileList = _self.chatFileList.filter(item=>item.fs_chat_nm != "");
+                            }
+                            break;              
+                        default: // 관심파일 별
+                        if (!!val) {
+                                _self.chatMoreFileList = _self.chatFileList.filter(item=>item.interest_yn == _self.searchFileOpt.fs_interest_yn);
+                            } else {
+                                _self.chatMoreFileList = _self.chatFileList.filter(item=>item.interest_yn != "");
+                            }
+                            break;
+                    }
+                },
+                endPopCall(){ // 팝업 닫기
+                    var _self = this;
+                    closeCmmPopup('addContactPopup');
+                    _self.getChatMemberList()
+                },
+                writeReply(e,idx){ // 댓글 화면 조작
+                    let idd = '#reply_chat_form_'+idx;
+                    if ($(idd)[0].style.display == 'block') {
+                        $(idd).hide()
+                    } else {
+                        let inputFoucs = document.getElementsByName("chat_txt_" + idx)
+                        $(idd).show()
+                        inputFoucs[0].focus();
+                    }
+                },
+                showReply(e,idx){ // 댓글 목록 조작
+                    let rdx = '#chat_reply_list_'+idx;
+                    if ($(rdx)[0].style.display == 'block') {
+                        $(rdx).hide()
+                    } else {
+                        $(rdx).show()
+                    }
+                },
+                gotoMsg(e,item,index){ // 담당자 선택 후 값 바인딩
+                    let _self = this;
+                    if (index == undefined) {
+                        if (_self.mainMsg.lastIndexOf("@") > 0) {
+                                _self.mainMsg = _self.mainMsg.substr(0,_self.mainMsg.lastIndexOf("@")) + "@" + item.fs_chat_nm + "/";
+                                _self.searchMemberView = false
+                            } else {
+                                _self.mainMsg = "@" + item.fs_chat_nm + "/";
+                                _self.searchMemberView = false
+                            }
+                    } else {
+                        _self.fileInfoListBox[index].msg = "@" + item.fs_chat_nm;
+                        _self.searchMemberReplyView = false
+                    }
+            
+                },
+                handleCheckedAll(e){ // 파일더보기 전체체크
+                    let _self = this;
+                    let {checked} = e.target;
+                    if (checked) {
+                        _self.chatMoreFileList.forEach(item=>{
+                            item.checked = true
+                        })
+                    } else {
+                        _self.chatMoreFileList.forEach(item=>{
+                            item.checked = false
+                        })
+                    }
+                },
+                handleCheckedItem(e,index){ // 파일더보기 item 선택
+                    let _self = this;
+                    let box = [];
+                    let checkbox = $("#checkedAll")[0];
+                    let {checked} = e.target;
+                    _self.chatMoreFileList[index].checked = checked;
+                    //전체 체크 확인
+                    box = _self.chatMoreFileList.filter(item=>item.checked === false)
+                    if (box.length > 0) {
+                        checkbox.checked = false;
+                    } else {
+                        checkbox.checked = true;
+                    }
+                },
+                goListStatusPosition(e,item,ii){ // 상태바 클릭 이벤트 -> 글 목록 최초 등록일 로 이동
+                    let _self = this;
+                    let elebox = 0;
+                    // 상태바 스타일링 적용
+                    let id = "#state-wrap-" + ii;
+                    $(".state-wrap li").removeClass("ing");
+                    $(id).addClass("ing")
+
+                    // 글 목록 구하기
+                    let chatlist = _self.chatHistory.filter((pre)=> (pre.fs_chat_id != null) && (pre.fs_chat_ref_seq == null))
+                    // item 상태 값 같은 값 수출
+                    let minchatlist = chatlist.filter((pre)=> pre.md_day == item.md_day)
+        
+                    minchatlist.forEach((item,idx)=>{
+                        if (item.mdfr_dt == item.min_date) {
+                            elebox = "#chat-list-item-" + idx;
+                        }
+                    })
+                    if (elebox) {
+                        $(elebox)[0].scrollIntoView({behavior: "smooth", inline: "nearest"});
+                    }
+                },
+                viewMoreBtn(){ // 더보기 버튼 이벤트
+                    let node = $(".record-list-inner")[0].style.display;
+                    if (node == "none") {
+                        $(".record-list-inner").show()
+                    } else {
+                        $(".record-list-inner").hide()
+                    }
+                    
+                },
+                onChangeStartDate(val) { // 달력 선택
+				    this.start_date = val;
+                },
+                visitConfirmation(e,key,item){ // 서비스외방문 일기 작성 등록
+                    let _this = this;
+                    let param = {
+                        sys_id          : item.sys_id,
+                        fs_no           : item.fs_no,
+                        etc_seq         : item.etc_seq,
+                        etc_date        : item.mdetc_date_day,
+                        etc_status_cd   : item.etc_status_cd,
+                        fs_mng_id       : item.fs_mng_id,
+                        user_id         : item.userId
+
+                    };
+                    if (item.etc_status_cd == '01') {
+                        if (key == "003") {
+                            // 공통팝업호출
+                            openCmmPopup("SalesUnActivityPop", "SalesActivityPopDiv", param);
+                        } else {
+                            if (_this.userTpCd === "01") {
+                                return;
+                            } else {
+                                _this.onChangeOpen(true,item,'03')
+                            }
+                        }
+
+                    } else {
+                        // 공통팝업호출
+                         openCmmPopup("SalesUnActivityPop", "SalesActivityPopDiv", param); 
+                    }
+                    console.log("팝업 완료");
+                },
+                getMdStatusCd(item){ // 수행여부 따라 스타일링 적용
+                    if (item.md_status_cd == '03') {
+                        return 'btn-record-apply complete'; 
+                    } else if(item.md_status_cd == '02'){
+                        return 'btn-record-apply ing';
+                    } else {
+                        return 'btn-record-apply';
+                    }
+                },
+                serviceJournal(item){
+                    let _self = this;
+                    let url = '/api/hcConsulting/saveJournal';
+                    _self.loading = true
+                    // let param = {noticeList:_this.delNoticeList};
+                    axios.put(url, item,{ headers:{'AJAX': true,'Content-Type': 'application/json'}
+                    }).then((res) => {
+                        _self.sendMailList(item)
+                    }).catch((err) => {
+                        cmmAlert(err)
+                    }).finally(()=>{
+                        _self.loading = false
+                    });
+                },
+                showReport(item){ // 일지 show
+                    let _this = this;
+                    let param = {};
+                        param.sys_id = item.sys_id;
+                        param.fs_no  = item.fs_no;
+                        param.fs_seq = _this.sendData.fs_seq;
+                        param.md_day = item.md_day;
+                    // 공통팝업호출
+                    openCmmPopup("SalesActivityPop", "SalesActivityPopDiv", param); 
+                    console.log("팝업 완료");
+                },
+                handlerOpenReport(e,item){ // 수행 일기 등록
+                    let _this = this;
+                    if (item.fs_mng_id === _this.userId) {
+                        if (item.md_status_cd == "03") {
+                            cmmConfirm('고객에게 확인요청메일을 발송 하시겠습니까?', res =>{
+                                if (!!res) { // 메일 보내면 03 그리고 수정 불가 수정
+                                    item.p_type = "02";
+                                    item.md_status_cd = "04"
+                                    _this.serviceJournal(item)// 확정중으로 셋팅 ( 고객 싸인 상태로 변경)
+                                    return;
+                                } else {
+                                    _this.showReport(item)
+                                }
+                            },"hcChat")
+                        } else if(item.mem_cnt == item.sign_cnt && item.sign_mng_tp_cd != "01") {
+                            cmmConfirm('고객에게 확인 요청 메일을 발송 하시겠습니까?', res =>{
+                                if (!!res) { // 메일 보내면 03 그리고 수정 불가 수정
+                                    item.p_type = "02";
+                                    item.md_status_cd = "04"
+                                    _this.serviceJournal(item)// 확정중으로 셋팅 ( 고객 싸인 상태로 변경)
+                                    return;
+                                } else {
+                                    _this.showReport(item)
+                                }
+                            },"hcChat")
+                        } else if (item.md_status_cd == "04") {
+                            cmmConfirm('수행일지 완료처리 하시겠습니까?', res =>{
+                                if (!!res) { // 메일 보내면 03 그리고 수정 불가 수정
+                                    item.p_type = "02";
+                                    item.md_status_cd = "05"
+                                    _this.serviceJournal(item)// 확정중으로 셋팅 ( 고객 싸인 상태로 변경)
+                                    return;
+                                } else {
+                                    _this.showReport(item)
+                                }
+                            },"hcChat")
+                        } else if (item.mem_cnt == item.sign_cnt && item.sign_mng_tp_cd == "01" && item.md_status_cd != "05") {
+                            cmmConfirm('수행일지 완료처리 하시겠습니까?', res =>{
+                                if (!!res) { // 메일 보내면 03 그리고 수정 불가 수정
+                                    item.p_type = "02";
+                                    item.md_status_cd = "05"
+                                    _this.serviceJournal(item)// 확정중으로 셋팅 ( 고객 싸인 상태로 변경)
+                                    return;
+                                } else {
+                                    _this.showReport(item)
+                                }
+                            },"hcChat")
+                        } else {
+                            if (item.md_status_cd == "02" && item.sign_cnt == "1") {
+                                if (item.mem_cnt == item.sign_cnt) {
+                                    cmmConfirm('고객에게 확인요청메일을 발송 하시겠습니까?',res => {
+                                        if (!!res) { // 메일 보내면 04 그리고 수정 불가 수정
+                                                item.p_type = "02";
+                                                item.md_status_cd = "04"
+                                            _this.setReqUpdateCompletTpCd(item) // 메일 발송 후 확정요청중으로 셋팅 ( 강제확정 가능 상태으로 변경)
+                                            return;
+                                        } else {
+                                            _this.openCompletPopupDiv('hcComplete');
+                                        }
+                                    },"hcChat") 
+                                } else {
+                                    cmmConfirm('참여 컨설턴트에 서명 요청을 메일로 발송합니까?',res => {
+                                        if (!!res) { // 메일 보내면 03 그리고 수정 불가 수정
+                                            item.p_type = "02";
+                                            item.md_status_cd = "03"
+                                            _this.serviceJournal(item) // 메일 발송 후 확정요청중으로 셋팅 ( 강제확정 가능 상태으로 변경)
+                                            return;
+                                        } else {
+                                            _this.showReport(item)
+                                        }
+                                    },"hcChat") 
+                                }
+                            } else {
+                                if (item.md_date != null) {
+                                    _this.showReport(item)
+                                }
+                            }
+                        }
+                    } else {
+                        if (_this.userTpCd == "01" && (parseInt(item.md_status_cd) < 4 )) {
+                            cmmAlert("참여 컨설턴트 서명이후 고객서명이 가능합니다.")
+                            return
+                        }
+                        if (item.md_date != null) {
+                            _this.showReport(item)
+                        }
+                    }
+                },
+                nonServiceVisitDateDel(e,key,item){ //서비스외방문일삭제
+                    e.preventDefault();
+                    let _self = this;
+                    let url = "/api/hcConsulting/nonServiceVisitDateDel";
+                    let param = {
+                        sys_id:item.sys_id,
+                        fs_no:item.fs_no,
+                        etc_seq:item.etc_seq,
+                    }
+                    axiosCall('delete',url,param,res =>{
+                        _self.getCoslEtcDayList()
+                        // _self.serviceVisitDate = this.serviceVisitDate.filter((item,index) => index != key)
+                    })
+                },
+                setChatLikeFile(e,item){ // 관심 파일 설정
+                    let {checked} = e.target;
+                    let _this = this;
+                    if (checked) {
+                        axiosCall('post', '/api/consulting/consult/setChatLikeFile',
+                            { 
+                                sys_id:item.sys_id,
+                                fs_no:_this.sendData.fs_no,
+                                fs_chat_id:item.fs_chat_id,
+                                atch_seq:parseInt(item.atch_seq),
+                                interest_yn:'Y'
+                            }, 
+                            res=> {
+                                _this.getChatFileList()                     
+                        });
+                    } else {
+                        axiosCall('delete', '/api/consulting/consult/deleteChatLikeFile',
+                            { 
+                                sys_id:item.sys_id,
+                                fs_no:_this.sendData.fs_no,
+                                atch_seq:parseInt(item.atch_seq),
+                                file_seq:parseInt(item.file_seq),
+                            }, 
+                            res=> {
+                                _this.getChatFileList()                     
+                        });
+                    }
+                },
+                handleChangeReplyMsg(e,index){ // 댓글 맨션 사용자 조회 이벤트
+                    let _self = this;
+                    let {value} = e.target;
+                    let mansion = value.indexOf("@");
+                    if (mansion == 0) {
+                        // $("#ms-fc-1").focus();
+                        _self.mansionMemberList = _self.memberList.filter(item => item.fs_chat_nm.includes(value.slice(1)))
+                        _self.searchMemberReplyView = true
+                        if (_self.searchMemberView) {
+                            _self.searchMemberView = false
+                        }
+                    } else {
+                        _self.searchMemberReplyView = false
+                    }
+                },
+                handleChangeMainMsg(e){
+                    let _self = this;
+                    let {value} = e.target;
+                    let mansion = value.lastIndexOf("@");
+                    if (mansion >= 0) {
+                        // $("#ms-fc-1").focus();
+                        // 멤버 조회
+                        if (mansion == 0) {
+                            _self.mansionMemberList = _self.memberList.filter(item => item.fs_chat_nm.includes(value.slice(1)))
+                        } else {
+                            _self.mansionMemberList = _self.memberList.filter(item => item.fs_chat_nm.includes(value.slice(value.lastIndexOf("@") + 1)))
+                        }
+                        // 멤버 조회시
+                        if (_self.mansionMemberList.length > 0) {
+                            // 멤버 조회 결과 show
+                            _self.searchMemberView = true
+                        } else { // 글 보내시
+                            _self.searchMemberView = false
+                        }
+                        // 선택 한 멥버 스타일링 적용
+                        $("#ms-fc_0").css("background-color","#f1f1f1");
+                        $("#ms-fc_0").css("cursor","pointer");
+                        if (_self.searchMemberReplyView) {
+                            // $("#call-list-reply-" + index).hide()
+                            // _self.searchMemberReplyView = false
+                        }
+                    } else {
+                        _self.searchMemberView = false
+                    }
+                },
+                btnCloseAll(e){// 수행 일지 전체 닫기
+                    let _self = this;
+                    $(".record-list-wrap").toggleClass('on-all');
+                    $(".btn-more-all").toggleClass('on');
+                    if($(".btn-more-all").hasClass("on")){
+                        $('.btn-more-all span').text('수행일지 전체닫기');
+                    }else{
+                        $('.btn-more-all span').text('더보기');
+                    }
+                },
+                btnCloseMore(e){ // 수행 일지 더보기
+                    let record_wrap = $(".record-list-wrap");
+                        record_wrap.toggleClass('on');
+                	if(record_wrap.hasClass('on')){
+                		$('.btn-more span').text('접기');
+                	}else{
+                		$('.btn-more span').text('더보기');
+                	}
+                },
+                onChangeClose(val) {
+				    this.open = val;
+			    },
+                onChangeOpen(val, item,type) {
+                    if (item.fs_mng_id == this.userId && type == "01") {
+                        this.open = val;
+                        this.md_day_param = item;
+                        this.popType = "01"
+                    } else {
+                        if (type === "02") {
+                            this.open = val
+                            this.popType = "02"
+                        } else if(type === "03"){
+                            this.open = val;
+                            this.md_day_param = item;
+                            this.popType = "03"
+                        } else {
+                            cmmAlert("컨설팅 주 담당자 아닙니다.")
+                        }
+                    }
+                },
+                handlerReportStatus(item){ // 수행 일지 상태 문구 조립
+                    let textbox = '';
+
+                    if (item.md_status_cd =='01') {
+                        textbox = '일지등록' + '(' + item.sign_cnt + '/' + item.mem_cnt + ')';
+                    } else if(item.md_status_cd =='02'){
+                        textbox = '확정요청전' + '(' + item.sign_cnt + '/' + item.mem_cnt + ')';
+                    } else if(item.md_status_cd =='03'){
+                        textbox = '확정요청중' + '(' + item.sign_cnt + '/' + item.mem_cnt + ')';
+                    } else if(item.md_status_cd =='04'){
+                        textbox = '확정중' + '(' + item.sign_cnt + '/' + item.mem_cnt + ')';
+                    } else if(item.md_status_cd =='05'){
+                        textbox = item.md_date;
+                    }
+
+                    return textbox;
+                },
+                delMemberYn(){ // 맴버 삭제 여부
+                    let _self = this;
+                    if (userTpCd != '01' && sendData.fs_mng_id != item.fs_chat_id && sendData.cst_mng_id != item.fs_chat_id){
+                        return true;
+                    } else {
+                        return false;
+                    }
+    
+                }
+            }
+        })
+        // window.addEventListener("keydown", (e) => console.log(e));
+    });
+    // start date 달력
+    Vue.component('datePickerFrom', {
+        template: '<input type="text" class="calendarDate_start" v-model="val" readonly/>',
+        props: ['val'],
+        mounted: function() {
+            drawDatePicker(this, 'on-change-start-date');
+        },
+        beforeDestroy: function(){
+            destroyDatePicker(this);
+        },
+        methods: {
+        }
+    });
+    // start date 달력
+    Vue.component('datePickerEfrom', {
+        template: '<input type="text" class="calendarDate_start" v-model="val" readonly/>',
+        props: ['val'],
+        mounted: function() {
+            drawDatePickerSingle(this, 'on-change-eform-date');
+        },
+        beforeDestroy: function(){
+            destroyDatePicker(this);
+        },
+        methods: {
+        }
+    });
+    // end date 달력
+    Vue.component('datePickerTo', {
+        template: '<input type="text" class="calendarDate_end" v-model="val" readonly/>',
+        props: ['val'],
+        mounted: function() {
+            drawDatePicker(this, 'on-change-end-date');
+        },
+        beforeDestroy: function(){
+            destroyDatePicker(this);
+        },
+        methods: {
+        }
+    });
+
+    // 수행일지 작성 팝업
+	Vue.component('JournalPop', {
+        template: '#JournalPop',
+        props: ['open', 'item','poptype'],
+        data() {
+            return {
+                inputJson :{
+                    sys_id : (this.poptype == "01" || this.poptype == "03") ? this.item.sys_id : "",
+                    fs_no  : (this.poptype == "01" || this.poptype == "03") ? this.item.fs_no : "",
+                    md_day : (this.poptype == "01" || this.poptype == "03") ? (this.poptype == "03" ? vue.$data.sendData.md_day : this.item.md_day) : "",
+                    md_status_cd : this.poptype == "01" ?  this.item.md_status_cd : "", //수행일지 현황
+                    fs_seq : vue.$data.sendData.fs_seq,
+                    cst_id : vue.$data.sendData.cst_id,
+                    cst_nm : vue.$data.sendData.cst_nm,
+                    //md_yn : '',
+                    md_date    : (this.poptype == "01" || this.poptype == "03") ? (this.poptype == "03" ? this.item.etc_date : (this.item.md_date ? this.item.md_date : moment().format('YYYY-MM-DD'))) : moment().format('YYYY-MM-DD'),       // 일지 작성 캘린더 날짜
+                    con_text11 : (this.poptype == "01" || this.poptype == "03") ? this.item.con_text11 : "",
+                    con_text12 : (this.poptype == "01" || this.poptype == "03") ? this.item.con_text12 : "",
+                    con_text21 : (this.poptype == "01" || this.poptype == "03") ? this.item.con_text21 : "",
+                    con_text22 : (this.poptype == "01" || this.poptype == "03") ? this.item.con_text22 : "",
+                    con_text31 : (this.poptype == "01" || this.poptype == "03") ? this.item.con_text31 : "",
+                    con_text32 : '',
+                    con_text41 : '',
+                    con_text42 : '',
+                    cst_mng_id : vue.$data.sendData.cst_mng_id,
+                    fs_mng_id  : vue.$data.sendData.fs_mng_id,
+                    fs_mng_sig_yn : '',
+                    fs_mng_sig_date : '',
+                    atch_nm : '',
+                    //atch_nm : '',
+                    atch_size : '',
+                    //atch_size : '',
+                    atch_ref_id : '',
+                    url : '',
+                    org_file_nm : '',
+                    ser_file_nm : '',
+                    //ser_file_nm : servfilenm,
+                    status : 'Y',
+                    rgstr_id : '',
+                    rgstr_dt : '',
+                    mdfr_id : '',
+                    mdfr_dt : '',
+                    cst_mng_sign : '',
+                    fs_mng_sign : '',
+                    //ssmm : '',
+                    cst_mng_sig_yn : '',
+                    cst_mng_sig_date : '',
+                    fs_mng_sig_yn : '',
+                    user_id : [[${session.userId}]],
+                    con_prod:'HACCP 컨설팅',
+                    p_type: '01',
+                    
+                }
+            }
+        },
+        methods: {
+            closePopup(e) {
+                let _this = this;
+
+                // 부모에게 자식 값 전달
+                _this.$emit("on-change-close",false)
+            },
+            onChangeEformDate(val){
+                this.inputJson.md_date= val;
+            },
+            // 수행일지 작성 저장
+            setActivityRecord(type) {
+                let _this = this;
+                if (!!!_this.inputJson.md_date) {
+                    cmmAlert("수행일자 선택하세요.")
+                    return;
+                }
+
+                if (!!!_this.inputJson.con_text11) {
+                    cmmAlert("컨설팅 내용 비어있습니다.")
+                    return;
+                }
+                if (!!!_this.inputJson.con_text21) {
+                    cmmAlert("다음일정 비어있습니다.")
+                    return;
+                }
+                if (type == "01") {
+                    let dateYn = vue.$data.coslMDayList.filter((pre)=>
+                        pre.md_date === _this.inputJson.md_date
+                    )
+                    if (dateYn.length > 0) {
+                        cmmAlert("다른 일지 수행일자 과 같습니다.")
+                        return;
+                    }
+                    // 수행일지 작성 저장
+                    _this.serviceJournal()
+                } else if (type == "03") {
+                    // 서비스 외 수행일지 수정
+                    _this.nonServiceJournalModify()
+                } else {
+                    // 서비스 외 수행일지 작성 저장
+                    _this.nonServiceJournal()
+                }
+                
+            },
+            serviceJournal(){ // 수행 일지 등록
+                let _self = this;
+                let url = '/api/hcConsulting/saveJournal';
+                axiosCall('put',url, _self.inputJson,res =>{
+                    let param = {};
+                    param.sys_id = _self.item.sys_id;
+                    param.fs_no  = _self.item.fs_no;
+                    param.fs_seq = vue.$data.sendData.fs_seq;
+                    param.md_day = _self.item.md_day;
+                    param.p_type = '01'
+                    _self.$emit("get-cosl-m-day-list",false)
+                    _self.closePopup()
+                });
+            },
+            nonServiceJournal(e){ //서비스외방문일등록
+                let _self = this;
+                let url = "/api/hcConsulting/nonServiceJournal";
+                _self.inputJson.sys_id = vue.$data.sendData.sys_id,
+                _self.inputJson.fs_no = vue.$data.sendData.fs_no,
+                _self.inputJson.etc_date = _self.inputJson.md_date,
+                _self.inputJson.fs_mng_id = vue.$data.sendData.fs_mng_id,
+                _self.inputJson.cst_mng_id = vue.$data.sendData.cst_mng_id
+                axiosCall('post', url,_self.inputJson,res =>{
+                    _self.$emit("get-cosl-etc-day-list",false)
+                    _self.closePopup()
+                })
+            },
+            nonServiceJournalModify(){//서비스외방문일등록 수정
+                let _self = this;
+                let url = "/api/hcConsulting/nonServiceJournalModify";
+                let itembox = _self.item;
+                itembox.md_date         =  _self.inputJson.md_date;
+                itembox.con_text11      =  _self.inputJson.con_text11;
+                itembox.con_text12      =  _self.inputJson.con_text12;
+                itembox.con_text21      =  _self.inputJson.con_text21;
+                itembox.con_text22      =  _self.inputJson.con_text22;
+                itembox.con_text31      =  _self.inputJson.con_text31;
+                axiosCall('put', url,_self.item,res =>{
+                    _self.$emit("get-cosl-etc-day-list",false)
+                    _self.closePopup()
+                })
+            }
+        },
+        mounted(){
+            console.log(this.inputJson)
+            console.log(this.poptype)
+	    },
+    });
+
+</script>
+
+</head>
+<body>
+	<section layout:fragment="content" id="app"  v-cloak>
+		<!-- content -->
+		<div class="page-content-vr">
+			<div class="vr-layout chat-board-wrap">
+				<div class="vr-top">
+                    <div class="flex-auto-end">
+                        <div class="board-info w100p">
+                            <dl>
+                                <dt><span class="tag-step">{{sendData.md_day}} MD</span></dt>
+                                <dd>{{sendData.fs_no}}</dd>
+                            </dl>
+                            <dl>
+                                <dt><b>상품명</b></dt>
+                                <dd>{{sendData.prod_nm}}</dd>
+                            </dl>
+                            <dl>
+                                <dt>식품유형</dt>
+                                <dd>{{sendData.prod_tp_nm}}</dd>
+                            </dl>
+                            <dl>
+                                <dt>담당자명</dt>
+                                <dd>{{sendData.cst_mng_nm}}</dd>
+                            </dl>
+                            <dl>
+                                <dt>연락처</dt>
+                                <dd>{{sendData.cst_mng_mobile}}</dd>
+                            </dl>
+                            <dl>
+                                <dt>최초접수일자</dt>
+                                <dd>{{sendData.mdfr_dt}}</dd>
+                            </dl>
+                        </div>
+                        <div class="bg01">
+                            <button class="btn-list circle mgr10 mgl10" @click="movePage('0')"><i></i>목록</button>
+                        </div>
+                    </div>
+				</div>
+                <div class="vr-middle bdt0">
+                    <div class="clear vr-title">
+                        <h2 class="page-title fl">수행일지</h2>
+                        <button v-if="userTpCd == '02'" class="btn-save2 mgl10 mgt3" @click="downloadFullJournal"><i class="ico-all-download"></i>전체 일지 다운로드</button>
+                        <div class="fr mgt10">
+                            <button class="btn-more-all" @click="btnCloseAll"><span>수행일지 전체닫기</span></button> <!-- "수행일지 전체닫기 / 수행일지 전체보기" 텍스트 변경 -->
+                        </div>
+                    </div>
+                    <div class="record-list-wrap">
+                        <!-- <div class="record-list-inner" v-if="activityRecord.length > 0">
+                            <ul class="record-list">
+                                <li v-for="(item, iii) in activityRecord" :key="iii"> -->
+                        <div class="record-list-inner">
+                            <ul class="record-list">
+                                <li v-for="(item, iii) in coslMDayList" :key="iii">
+                                    <span class="record-title">{{item.md_day}}MD {{item.cst_cesco_mng_nm}}</span>
+                                    <div>
+                                        <!-- <button @click="onChangeOpen(true,item)">일지작성</button> -->
+                                        <button :class="getMdStatusCd(item)" @click="onChangeOpen(true,item,'01')" v-if="item.md_status_cd =='01' || item.md_status_cd =='02'">
+                                            <i></i>
+                                        </button>
+                                        <button :class="getMdStatusCd(item)" @click="handlerOpenReport($event,item)">
+                                            <span>{{handlerReportStatus(item)}}</span>
+                                        </button>
+                                    </div>
+                                </li>
+                            </ul>
+                            <div class="visit-date-wrap">
+                                <dl  v-if="userTpCd == '02'">
+                                    <dt><span class="record-title">서비스외 방문일 등록</span></dt>
+                                    <dd>
+                                        <div class="calendar-combo-box">
+                                            <div class="mgr5">
+                                                <span class="calendar-box">
+                                                    <date-picker-from 
+                                                        name="startDate" 
+                                                        type="text" 
+                                                        id="startDate" 
+                                                        size="12" 
+                                                        title="표시컨설팅접수일자" 
+                                                        :val="start_date" 
+                                                        v-model="start_date" 
+                                                        @on-change-start-date="onChangeStartDate"                            
+                                                    />
+                                                </span>
+                                                <span class="calendar-box" style="display: none;">
+                                                    <!-- <input name="" type="text" class="calendarDate_end"> -->
+                                                    <date-picker-to 
+                                                        name="endDate" 
+                                                        type="text" 
+                                                        id="endDate" size="12" 
+                                                        title="표시컨설팅접수일자" 
+                                                    />
+                                                </span>
+                                            </div>
+                                            <div><button class="btn-visit" @click="onChangeOpen(true,{},'02')">등록</button></div>
+                                        </div>
+                                    </dd>
+                                </dl>
+                                <dl v-if="coslEtcDayList.length > 0">
+                                    <dt><span class="record-title">서비스외 방문일</span></dt>
+                                    <dd>
+                                        <div>
+                                            <ul>
+                                                <li v-for="(item, ii) in coslEtcDayList" :key="ii">
+                                                    <div class="calendar-combo-box">
+                                                        <div class="mgr5" @click="visitConfirmation($event,'001',item)"><span class="calendar-box"><input type="text" :value="item.etc_date" readonly></span></div>
+                                                        <div v-if="item.etc_status_cd == '02'">
+                                                            <button class="btn-visit check" @click="visitConfirmation($event,'002',item)" disabled="disabled" style="background-color:grey;">확인완료</button>
+                                                        </div>
+                                                        <div v-if="item.etc_status_cd == '01'" @click="visitConfirmation($event,'003',item)">
+                                                            <button class="btn-visit check" >일지확인</button>
+                                                        </div>
+                                                        <button class="btn-del" v-if="userTpCd == '02' && item.etc_status_cd == '01'" @click="nonServiceVisitDateDel($event,ii,item)" >삭제</button><!--삭제 버튼은 관리자 화면에만 노출-->
+                                                    </div>
+                                                </li>
+                                                <!-- <li>
+                                                    <div class="calendar-combo-box">
+                                                        <div class="mgr5"><span class="calendar-box"><input type="text" :value="item.start_date" readonly></span></div>
+                                                    </div>
+                                                </li> -->
+                                            </ul>
+                                        </div>
+                                    </dd>
+                                </dl>
+                            </div>
+                        </div>
+                        <button class="btn-more" @click="btnCloseMore"><span>더보기</span></button>
+                    </div>
+                    
+                </div>
+				<div class="vr-content">
+					<section class="vr-left">
+						<div class="mCustomScrollbar _mCS_1">
+							<div class="state-wrap">
+								<ul>
+                                    <li :id="'state-wrap-' + index"
+                                        v-for="(item, index) in statusList" :key="index" 
+                                        :class="completeHistory(item,index)" @click="goListStatusPosition($event,item,index)">
+										<i></i>
+										<span class="date">{{item.md_date}}</span>
+										<span class="state">{{item.md_day}} MD</span>
+                                    </li>
+								</ul>
+							</div>
+						</div>
+					</section>
+					<section class="vr-center">
+						<div class="vr-center-box">
+							<div class="vr-center-top">
+								<div class="mCustomScrollbar _mCS_1" ref="tergetMove">
+									<div class="vr-main-content">
+										<ul>
+                                            <li :class="'chat-list-item ' + ((item.fs_chat_seq == item.max_fs_chat_seq) ? ' new' :'') + ((userId == item.fs_chat_id) ? ' my' :'')" 
+                                                v-for="(item, index) in chatHistory.filter((pre)=> (pre.fs_chat_id != null) && (pre.fs_chat_ref_seq == null))" 
+                                                :id="'chat-list-item-' + index" :key="index" >
+                                                <div class="chat-list-box">
+                                                    <div class="chat-info">
+                                                        <!--2022.11.03 상태 표시 & 말풍선 추가-->
+                                                        <div class="num">
+                                                            <div class="tooltip-wrap">
+                                                                <span class="tooltip-txt">
+                                                                    {{item.mdfr_dt}}<br>
+                                                                    {{item.fs_status_nm}}
+                                                                </span>
+                                                                <span>{{item.md_day}}</span>
+                                                                <!-- <span>{{item.fs_status_nm}}</span> -->
+                                                            </div>
+                                                        </div>
+                                                        <!--2022.11.03 상태 표시 & 말풍선 추가 끝.-->
+                                                        <span class="a-mention">{{item.fs_chat_nm}}</span>
+                                                        <span class="date">{{item.mdfr_dt}}</span>
+                                                        <span>{{item.sendMgtCompnay}}</span>
+                                                        <p>{{item.contents}}</p>
+                                                    </div>
+                                                    <div class="chat-file-list-all">
+                                                        <ul class="chat-file-list" v-if="chatHistory.filter((pre)=>(((pre.fs_chat_id == null) && (pre.fs_chat_seq == item.fs_chat_seq)))).length < 2">
+                                                            <li v-for="(itm, idx) in chatHistory.filter((pre)=>(((pre.fs_chat_id == null) && (pre.fs_chat_seq == item.fs_chat_seq))))" :key="idx">
+                                                                <span>{{itm.atch_nm}}</span>
+                                                                <button class="btn-download" @click="onDownload(itm.ser_file_nm)">다운로드</button>
+                                                            </li>
+                                                        </ul>
+                                                        <select style="min-width: 212px;" @change="onChangeFileDownLoad" v-if="chatHistory.filter((pre)=>(((pre.fs_chat_id == null) && (pre.fs_chat_seq == item.fs_chat_seq)))).length > 1">
+                                                            <option value="">-선택-</option>   
+                                                            <option v-for="(itm, idx) in chatHistory.filter((pre)=>(((pre.fs_chat_id == null) && (pre.fs_chat_seq == item.fs_chat_seq))))" :key="idx">{{itm.atch_nm}}</option>
+                                                        </select>
+                                                        <button class="btn-round" @click="selectFileSave($event,item)" v-if="chatHistory.filter((pre)=>(((pre.fs_chat_id == null) && (pre.fs_chat_seq == item.fs_chat_seq)))).length > 1">
+                                                            <i class="ico-download"></i>
+                                                            선택 파일 저장
+                                                        </button>
+                                                        <button class="btn-round btn-all-save" name="base" @click="allSaveFile($event,item)" style="bottom: 7px;" v-if="chatHistory.filter((pre)=>(((pre.fs_chat_id == null) && (pre.fs_chat_seq == item.fs_chat_seq)))).length > 1">
+                                                            <i class="ico-download"></i>
+                                                            모든 파일 저장
+                                                        </button>
+                                                    </div>
+                                                    <!-- 2022.11.03 댓글 입력 추가 -->
+                                                    <div class="reply-chat-form" :id="'reply_chat_form_'+index">
+                                                        <div class="flex-auto-end chat-wrap">
+                                                            <div>
+                                                                <div class="chat-input-box">
+                                                                    <input type="text" 
+                                                                        class="chat-txt"
+                                                                        :name="'chat_txt_'+index"
+                                                                        :placeholder="item.fs_chat_nm + '멘션메일은:@홍길동 + / + 내용 보내주세요.'" 
+                                                                        v-model="fileInfoListBox[index].msg"
+                                                                        @input="handleChangeReplyMsg($event,index)"
+                                                                        @keyup.enter="handleSendMsg($event,index,item.fs_chat_seq,'02',item)">
+                                                                    <div class="chat-file-upload">
+                                                                        <input type="file" :id="'reply_file_name_' + index" class="upload-hidden" multiple @change="findFile($event,'02',index)">
+                                                                        <label :for="'reply_file_name_' + index">파일첨부하기</label>
+                                                                    </div>
+                                                                    <!-- 2022.11.29 - @call message 추가 -->
+                                                                    <div class="call-list" v-show="searchMemberReplyView">
+                                                                        <ul>
+                                                                            <li v-for="(item, index) in mansionMemberList"
+                                                                                :key="index" 
+                                                                                :id="'ms-fc_' + index"
+                                                                                @click="handleKeyPress($event,item,index,null)">
+                                                                                <em>{{item.fs_chat_nm}}</em>
+                                                                                <span>{{item.email}}</span>
+                                                                            </li>
+                                                                        </ul>
+                                                                    </div>
+                                                                    <!-- 2022.11.29 - @call message 추가 끝. -->
+                                                                    <button class="btn-chat-register fr" @click="handleSendMsg($event,index,item.fs_chat_seq,'02',item)">등록</button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="reply-chat-file-list" style="display: none;" :id="'reply_chat_'+index">
+                                                            <ul class="chat-file-list">
+                                                                <li v-for="(itemFile, indexs) in fileInfoListBox[index].fileInfo" :key="indexs">
+                                                                    <span>{{itemFile.atch_nm}}</span>
+                                                                    <button class="btn-del" @click="findDelFile(itemFile.atch_nm,'02',index)">삭제</button>
+                                                                </li>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                    <div class="btn-reply-show-wrap" v-if="chatHistory.filter((pre)=>((pre.fs_chat_ref_seq != null) && (pre.fs_chat_ref_seq ==item.fs_chat_seq))).length > 0">
+                                                        <button class="btn-reply-show" @click="showReply($event,index)"><i class="ico-reply"></i>답글
+                                                            <span class="count">{{chatHistory.filter((pre)=>((pre.fs_chat_ref_seq != null) && (pre.fs_chat_ref_seq ==item.fs_chat_seq))).length}}</span>
+                                                        </button>
+                                                    </div>
+                                                    <!-- 2022.11.03 댓글 입력 추가 끝. -->
+                                                    <div class="pos-right">
+                                                        <div class="btn-square-wrap btn-reply"><!--2022.11.03 btn-reply 클래스 추가-->
+                                                            <!-- <span class="btn-square-multi">
+                                                                <i class="ico-set"></i>
+                                                                <select v-model="fs_status_cd" v-if="userTpCd == '02'" @change="setfsStatusCd($event,item)">
+                                                                <option value="">진행단계 설정</option>
+                                                                <option v-for="(item, index) in codeList1" :key="index" :value="item.cmm_dtl_cd">{{item.cmm_dtl_nm}}</option>
+                                                                </select>
+                                                            </span> -->
+                                                            <button class="btn-square-multi" @click="writeReply($event,index)"><i class="ico-reply"></i>답글달기</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!-- 2022.11.02 댓글 입력 부분 위치(li 안으로 댓글 영역 삽입), 구조 변경(내부 ul 추가됨) -->
+                                                <ul class="chat-reply-list" :id="'chat_reply_list_'+index">
+                                                    <li class="chat-list-item reply" :id="'chat-list-item-reply-' + replyItem.fs_chat_seq" v-for="(replyItem, ii) in chatHistory.filter((pre)=>pre.fs_chat_ref_seq ==item.fs_chat_seq)" :key="ii" >
+                                                        <div class="chat-list-box">
+                                                            <div class="chat-info">
+                                                                <span class="date">{{replyItem.mdfr_dt}}</span>
+                                                                <span>{{replyItem.fs_chat_nm}}</span>
+                                                                <span>{{replyItem.sendMgtCompnay}}</span>
+                                                                <p>{{replyItem.contents}}</p>
+                                                            </div>
+                                                            <div class="chat-file-list-all">
+                                                                <ul class="chat-file-list" v-if="chatHistory.filter((pre)=>pre.fs_chat_seq == parseInt(!!replyItem.seq ? replyItem.seq.split('>')[1] : '')).length < 1">
+                                                                    <li v-for="(itemFiles, idx) in chatHistory.filter((pre)=>pre.fs_chat_seq == parseInt(!!replyItem.seq ? replyItem.seq.split('>')[1] : '') && (pre.atch_seq > 0))" :key="idx">
+                                                                        <span>{{itemFiles.atch_nm}}</span>
+                                                                        <button class="btn-download" @click="onDownload(item.ser_file_nm)">다운로드</button>
+                                                                    </li>
+                                                                </ul>
+                                                                <select style="min-width: 212px;" @change="onChangeFileDownLoad" v-if="chatHistory.filter((pre)=>pre.fs_chat_seq == parseInt(!!replyItem.seq ? replyItem.seq.split('>')[1] : '')).length > 2">
+                                                                    <option value="">-선택-</option>  
+                                                                    <option v-for="(item2, idx) in chatHistory.filter((pre)=>pre.fs_chat_seq == parseInt(!!replyItem.seq ? replyItem.seq.split('>')[1] : '')).splice(1)" :key="idx">{{item2.atch_nm}}</option>
+                                                                </select>
+                                                                <button class="btn-round" @click="selectFileSave($event,replyItem)" v-if="chatHistory.filter((pre)=>pre.fs_chat_seq == parseInt(!!replyItem.seq ? replyItem.seq.split('>')[1] : '')).length > 2">
+                                                                    <i class="ico-download"></i>
+                                                                    선택 파일 저장
+                                                                    </button>
+                                                                <button class="btn-round btn-all-save" name="reply" @click="allSaveFile($event,replyItem)" v-if="chatHistory.filter((pre)=>pre.fs_chat_seq == parseInt(!!replyItem.seq ? replyItem.seq.split('>')[1] : '')).length > 2">
+                                                                    <i class="ico-download"></i>
+                                                                    모든 파일 저장
+                                                                </button>
+                                                            </div>
+                                                            <!-- <div class="chat-file-list-all">
+                                                                <ul class="chat-file-list">
+                                                                    <li>
+                                                                        <span>000 자료.pdf</span>
+                                                                        <button class="btn-download">다운로드</button>
+                                                                    </li>
+                                                                </ul>
+                                                                <button class="btn-round btn-all-save"><i class="ico-download"></i>모든 파일 저장</button>
+                                                            </div> -->
+                                                            <div class="pos-right">
+                                                                <div class="btn-square-wrap btn-show">
+                                                                    <!-- <button class="btn-square-multi"><i class="ico-set"></i>진행단계 설정</button>
+                                                                    <button class="btn-square-multi"><i class="ico-reply"></i>답글달기</button> -->
+                                                                </div>
+                                                                <!-- <span class="tag-step">{{replyItem.fs_status_nm}}</span> -->
+                                                            </div>
+                                                        </div>
+                                                    </li>
+                                                </ul>
+                                            </li>
+										</ul>
+									</div>
+								</div>
+							</div>
+							<div class="vr-center-bottom">
+								<div class="flex-auto-end chat-wrap">
+									<div>
+										<div class="chat-input-box">
+											<input type="text" class="chat-txt" :placeholder="userNm + '멘션메일은:@홍길동 + / + 내용 보내주세요.'"
+                                                v-model="mainMsg"
+                                                @input="handleChangeMainMsg"
+                                                @keyup.enter="handleSendMsg($event,99999,'','01')"
+                                                ref="autoFocus">
+											<div class="chat-file-upload">
+												<input type="file" id="file_name" class="upload-hidden" multiple @change="findFile($event,'01')">
+												<label for="file_name">파일첨부하기</label>
+											</div>
+                                            <!-- 2022.11.29 - @call message 추가 -->
+                                            <div class="call-list" v-show="searchMemberView" id="call-list-base">
+                                                <ul>
+                                                    <li v-for="(item, index) in mansionMemberList"
+                                                        :key="index" 
+                                                        :id="'ms-fc_' + index" 
+                                                        @keyup.enter="gotoMsg($event,item)"
+                                                        @click="gotoMsg($event,item)">
+                                                        <em>{{item.fs_chat_nm}}</em>
+                                                        <span>{{item.email}}</span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            <!-- 2022.11.29 - @call message 추가 끝. -->
+										</div>
+									</div>
+								</div>
+								<ul class="chat-file-list">
+									<li v-for="(item, index) in fileInfoList" :key="index">
+										<span>{{item.atch_nm}}</span>
+										<button class="btn-del" @click="findDelFile(item.atch_nm,null)">삭제</button>
+									</li>
+								</ul>
+							</div>
+						</div>
+                        <div class="vr-pop js-layer-pop" v-show="showMoreView"><!--더보기 화면-->
+                            <div class="pop-wrap">
+                                <h1 class="blind">파일 더보기</h1>
+                                <header class="pop-header">
+                                    <div class="pop-header-title-wrap">
+                                        <div class="chat-form-search-wrap">
+                                            <div>
+                                                <select class="select-top" @change="onChangeFileOpt(0,searchFileOpt.fs_file_type)" v-model="searchFileOpt.fs_file_type">
+                                                    <option value="">파일타입</option>
+                                                    <option v-for="(item, index) in [...chatFileTypeList(0)]" :key="index" :value="item">{{item}}</option>
+                                                </select>
+                                                <select class="select-top" @change="onChangeFileOpt(1,searchFileOpt.fs_chat_nm)" v-model="searchFileOpt.fs_chat_nm">
+                                                    <option value="">등록자</option>
+                                                    <option v-for="(item, index) in [...chatFileTypeList(1)]" :key="index" :value="item">{{item}}</option>
+                                                </select>
+                                                <select class="select-top" @change="onChangeFileOpt(2,searchFileOpt.fs_interest_yn)" v-model="searchFileOpt.fs_interest_yn">
+                                                    <option value="">전체</option>
+                                                    <option value="Y">예</option>
+                                                    <option value="N">아니요</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <span class="num">전체<b>{{chatFileList.length < 1 ? 0 : chatFileList.length}}</b></span>
+                                            </div>
+                                        </div>
+                                        <button class="btn-pop-close js-pop-close" @click="viewMore(0)">닫기</button>
+                                    </div>
+                                </header>
+                                <div class="pop-container">
+                                    <div class="pop-common-box">
+                                        <div class="flex-auto-end mgb10">
+                                            <div>
+                                                <span class="file-list-num">전체<b>{{chatMoreFileList.length < 1 ? 0 : chatMoreFileList.length}}</b></span>
+                                            </div>
+                                            <!-- 전체 체크 -->
+                                            <div>
+                                                <label class="check mgr10" @change="handleCheckedAll">
+                                                    <input type="checkbox" id="checkedAll">
+                                                    <span class="ico"></span>
+                                                    <span class="txt">전체선택</span>
+                                                </label>
+                                                <button class="btn-round"  @click="allSaveFile($event)"><i class="ico-download"></i>선택 파일 저장</button>
+                                            </div>
+                                        </div>
+                                        <ul class="file-type-list">
+                                            <li v-for="(item, index) in chatMoreFileList" :key="index">
+                                                
+                                                <i v-if="item.file_type == 'PNG'"><img th:src="@{/images/types/png.png}" alt="첨부파일"></i>
+                                                <i v-else-if="item.file_type == 'JPG'"><img th:src="@{/images/types/jpg.png}" alt="첨부파일"></i>
+                                                <i v-else-if="item.file_type == 'PDF'"><img th:src="@{/images/types/pdf.png}" alt="첨부파일"></i>
+                                                <i v-else-if="item.file_type == 'XLSX'"><img th:src="@{/images/types/xlsx.png}" alt="첨부파일"></i>
+                                                <i v-else-if="item.file_type == 'PPTX'"><img th:src="@{/images/types/pptx.png}" alt="첨부파일"></i>
+                                                <i v-else-if="item.file_type == 'DOCX'"><img th:src="@{/images/types/docx.png}" alt="첨부파일"></i>
+                                                <i v-else><img th:src="@{/images/types/file.png}" alt="첨부파일"></i>
+                                                <div class="type-info">
+                                                    <div>
+                                                        <p><a href="#" @click="onDownload(item.ser_file_nm)">{{item.org_file_nm}}</a></p>
+                                                        <span>{{item.fs_chat_nm}}</span>&nbsp;<span>{{item.fs_cst_nm}}</span>&nbsp;<span>{{item.mdfr_dt}}</span>
+                                                    </div>
+                                                </div>
+                                                <!-- item 체크 -->
+                                                <div>
+                                                    <span class="btn-check-file">
+                                                        <label class="check" @change="handleCheckedItem($event,index)">
+                                                            <input type="checkbox" name="fileck" :checked="item.checked">
+                                                            <span class="ico"></span>
+                                                            <span class="txt">파일선택</span>
+                                                        </label>
+                                                    </span>
+                                                </div>
+                                                <div class="check-like-wrap">
+                                                    <label class="check-like">
+                                                        <input type="checkbox" name="interest_yn" :checked="item.interest_yn == 'Y' ? 'checked' : ''" @change="setChatLikeFile($event,item)">
+                                                        <span class="ico"></span>
+                                                        <span class="txt">관심파일</span>
+                                                    </label>
+                                                </div>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+					</section>
+					<section class="vr-right">
+						<div class="vr-right-wrap">
+							<div class="vr-right-top">
+								<div class="mCustomScrollbar _mCS_1">
+									<div class="vr-title-wrap">
+										<h4><i class="ico-file"></i>파일</h4>
+										<button class="btn-more js-pop-open" @click="viewMore(1)">더보기</button>
+									</div>
+									<div class="vr-right-box">
+										<div class="file-list-wrap">
+											<ul class="file-list">
+												<li v-for="(item, index) in chatFileList" :key="index">
+                                                    <a href="#" @click="onDownload(item.ser_file_nm)">{{item.org_file_nm}}</a>
+                                                </li>
+											</ul>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="vr-right-bottom">
+								<div class="mCustomScrollbar _mCS_1">
+									<div class="vr-title-wrap">
+										<h4><i class="ico-user"></i>참여자</h4>
+										<button class="btn-add" @click="openAddContactPopupDiv('addContactPopup')">추가</button>
+									</div>
+									<div class="vr-right-box">
+										<ul class="user-list">
+											<li v-for="(item, index) in memberList" :key="index" :id="item.fs_chat_id">
+												<span class="name">{{item.fs_chat_nm}}</span>
+												<span>{{item.fs_chat_cst_nm}}</span>
+												<span v-if="userTpCd != '01' && sendData.fs_mng_id != item.fs_chat_id && sendData.cst_mng_id != item.fs_chat_id">
+                                                    <button class="btn-del" @click="delMember($event,item.fs_chat_id)">삭제</button>
+                                                </span>
+											</li>
+										</ul>
+									</div>
+								</div>
+							</div>
+						</div>
+					</section>
+				</div>
+			</div>
+		</div>
+		<!-- //content -->
+        <!-- 담당자 추가 팝업 -->
+        <div id="addContactPopupDiv"></div>
+        <!-- 로딩창 임시-->
+        <!-- <div class="layer-pop-wrap" v-show="loading"> --> <!--2022.12.19 로딩 화면 확인을 위해 v-show 임시 주석처리 -->
+            <div class="layer-pop-wrap" v-show="loading">
+                <div class="spinnerWrap">
+                    <img class="spinner" th:src="@{/images/common/img_loading01.png}"/>
+                    <p class="typing-txt">로딩중입니다. 잠시만 기다려주세요</p>
+                </div>
+            </div>
+        <div id="SalesActivityPopDiv"></div>
+        <journal-pop v-if="open" :open="open" :item="md_day_param" :poptype="popType" @on-change-close="onChangeClose" @get-cosl-etc-day-list="getCoslEtcDayList" @get-cosl-m-day-list="getCoslMDayList"></journal-pop>
+        <!-- <div id="UnSalesActivityPopDiv"></div>
+        <journal-pop v-if="open" :open="open" :item="md_day_param" :poptype="popType" @on-change-close="onChangeClose" @get-cosl-etc-day-list="getCoslEtcDayList" @get-cosl-m-day-list="getCoslMDayList"></journal-pop> -->
+	</section>
+</body>
+</html>
+<!-- 수행일지 작성 팝업 -->
+<template id="JournalPop">
+    <div class="layer-pop-wrap">
+        <div class="layer-pop-box large">
+            <div class="pop-wrap">
+                <h1 class="blind">HACCP > 컨설팅 > 수행일지등록 팝업</h1>
+                <header class="pop-header">
+                    <div class="pop-header-title-wrap">
+                        <h3 class="pop-header-title">수행일지 등록</h3>
+                        <button class="btn-pop-close js-pop-close" @click="closePopup">닫기</button>
+                    </div>
+                </header>
+                <div class="pop-container">
+                    <div class="pop-common-box">
+                        <div class="mgt30">
+                            <table class="tb-view-01">
+                                <colgroup><col width="150px"><col width="50%"><col width="150px"><col width=""></colgroup>
+                                <tbody>
+                                    <tr>
+                                        <th>컨설팅 업체명</th>
+                                        <td><span>{{inputJson.cst_nm}}</span></td>
+                                        <th>수행일자</th>
+                                        <td>
+                                            <div class="calendar-wrap single">
+                                            <span class="calendar-box">
+                                                <!-- <input type="text" class="calendarDate_start"> -->
+                                                <date-picker-efrom 
+                                                    name="efomrDate" 
+                                                    type="text" 
+                                                    id="efomrDate" 
+                                                    size="12" 
+                                                    title="표시컨설팅접수일자"
+                                                    :val="inputJson.md_date" 
+                                                    v-model="inputJson.md_date" 
+                                                    @on-change-eform-date="onChangeEformDate"                            
+                                                />
+                                            </span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>컨설팅 테마</th>
+                                        <td><span>{{inputJson.con_prod}}</span></td>
+                                        <th>진행일수</th>
+                                        <td><input type="text" class="full" disabled v-model="poptype === '02' ?  '-미팅' : inputJson.md_day + ' MD'"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mgt10">
+                            <table class="tb-view-01">
+                                <colgroup><col width="150px"><col width="60%"><col width=""></colgroup>
+                                <thead>
+                                    <tr>
+                                        <th>구분</th>
+                                        <th>수행업무내용</th>
+                                        <th>비고</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <th>컨설팅 내용</th>
+                                        <td><textarea name="con_text11" id="con_text11" cols="30" rows="15" class="full" style="height:auto;" v-model="inputJson.con_text11"></textarea></td>
+                                        <td><textarea name="con_text12" id="con_text12" cols="30" rows="15" class="full" style="height:auto;" v-model="inputJson.con_text12"></textarea></td>
+                                    </tr>
+                                    <tr>
+                                        <th>다음일정</th>
+                                        <td><textarea name="con_text21" id="con_text21" cols="30" rows="5" style="height:auto;" class="full" v-model="inputJson.con_text21"></textarea></td>
+                                        <td><textarea name="con_text22" id="con_text22" cols="30" rows="5" style="height:auto;" class="full" v-model="inputJson.con_text22"></textarea></td>
+                                    </tr>
+                                    <tr>
+                                        <th>이슈 및 요청사항</th>
+                                        <td colspan="2"><textarea name="con_text31" id="con_text31" cols="30" rows="5" style="height:auto;" class="full" v-model="inputJson.con_text31"></textarea></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="pop-bottom">
+                    <div class="pop-btn-box">
+						<a href="#" class="btn-pop-bottom" @click="closePopup">취소</a>
+						<a href="#" class="btn-pop-bottom" @click="setActivityRecord(poptype)">등록</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>

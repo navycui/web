@@ -1,0 +1,715 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/default}">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1 minimum-scale=1" />
+
+<script type="text/javascript">
+    
+	var vue
+    $(document).ready(function(){
+
+        vue = new Vue({
+            el: '#app',
+            data: {
+                // 조회 정보
+                search_cst_id : '',             // 고객사코드
+                search_cst_nm : '',             // 고객사명
+                search_cst_biz_no : '',         // 사업자번호
+                search_status : '',             // 거래상태 (Y:정상 N:거래중단)
+
+                // 고객사 정보
+                selCusInfo : {
+                    // sys_id : 'FS',       // 시스템 ID 
+                    cst_id : '',            // 고객사코드
+                    cst_nm : '',            // 고객사명
+                    cst_tp_cd : '01',         // 고객사유형
+                    cst_mng_biz : '',       // 종사업자번호
+                    cst_biz_no : '',        // 사업자번호
+                    cst_tel_no : '',        // 전화번호
+                    cst_fax_no : '',        // 팩스번호
+                    cst_email : '',         // 이메일
+                    cst_sys_id : '',        // ERP 고객번호
+                    status : 'Y',           // 거래상태 (Y:정상 N:거래중단)
+                    rgstr_id : '',          // 등록자ID
+                    rgstr_nm : '',          // 등록자명
+                    rgstr_dt : '',          // 등록일
+                    mdfr_id : '',           // 수정자ID
+                    mdfr_nm : '',           // 수정자명
+                    mdfr_dt : '',           // 수정일
+                    ssmm : ''               //
+                },
+                sysCateList : [],           // 시스템 구분
+                cusTypeList : [],           // 고객사 유형
+                chkCusUpt : false,          // 등록:true 수정:false
+                bCertification : false      // 고객사 인증
+
+            },
+            filters: {
+                currency: function (value) {                    
+                    return value.replace(/[^0-9]/g, '').replace(/^(\d{0,3})(\d{0,2})(\d{0,5})$/g, "$1-$2-$3").replace(/\-{1,2}$/g, "");
+                }
+            },
+
+            mounted(){
+
+                let _this = this;
+                let param = [
+                    {sys_cd:'FS', cmm_cd:'FS013', arr_nm:'sysCateList', comboType:'select'}, 
+                    {sys_cd:'FS', cmm_cd:'FS008', arr_nm:'cusTypeList', comboType:'select'}
+                ];
+
+                getCodeListForArrNm(param, _this);
+
+                _this.drawGrid();
+                
+            },
+
+            methods: {
+
+                // 고객사 등록
+                insCusInfo: function(){
+
+                    let _this = this;
+
+                    _this.selCusInfo.sys_id         = 'FS';
+                    _this.selCusInfo.cst_id         = '';
+                    _this.selCusInfo.cst_nm         = '';
+                    _this.selCusInfo.cst_tp_cd      = '01';
+                    _this.selCusInfo.cst_mng_biz    = '';
+                    _this.selCusInfo.cst_biz_no     = '';
+                    _this.selCusInfo.cst_tel_no     = '';
+                    _this.selCusInfo.cst_fax_no     = '';
+                    _this.selCusInfo.cst_email      = '';
+                    _this.selCusInfo.cst_sys_id     = '';
+                    _this.selCusInfo.status         = 'Y';
+                    _this.selCusInfo.rgstr_id       = '';
+                    _this.selCusInfo.rgstr_nm       = '';
+                    _this.selCusInfo.rgstr_dt       = '';
+                    _this.selCusInfo.mdfr_id        = '';
+                    _this.selCusInfo.mdfr_nm        = '';
+                    _this.selCusInfo.mdfr_dt        = '';
+                    _this.selCusInfo.ssmm           = '';
+
+                    _this.chkCusUpt = false;
+                    _this.bCertification = false;
+
+                },
+
+                // 고객사 인증
+                onCertification: function(){
+
+                    let _this = this;
+
+                    if(_this.selCusInfo.cst_sys_id.trim() === ''){
+                        cmmAlert('ERP고객코드를 입력해 주세요.');
+                        return false;
+                    }
+
+                    axiosCall('post', '/cus/api/certificationInfo', {cust_cd : _this.selCusInfo.cst_sys_id.trim()}, function(response) { 
+                        if(response.data.length === 0){
+                            cmmAlert('등록된 코드 정보가 없습니다.');
+                            return false;
+                        }else{
+                            cmmAlert('인증 성공');
+                            const cunCertInfo = response.data;
+                            _this.selCusInfo.cst_nm         = cunCertInfo.cust_nm;
+                            _this.selCusInfo.cst_biz_no     = _this.onMaskBizNoTxt(cunCertInfo.biz_no);
+                            _this.selCusInfo.cst_mng_biz    = _this.onMaskBizNoTxt(cunCertInfo.biz_sub_no);
+
+                            _this.bCertification = true;
+                        }
+                    });                    
+                },
+
+                // 인증 초기화
+                onResetCert: function(){
+                    let _this = this;
+                    _this.bCertification = false;
+                },
+
+                // 선택 데이터 가져오기
+                selectedRow: function(){
+
+                    let idxs = $('#jqxGrid').jqxGrid('getselectedrowindexes');
+
+                    let data = [];
+
+                    if(idxs.length > 0) {
+
+                        let rowIDs = new Array();
+                        let updateChk = false;
+                        
+                        $(idxs).each(function(index, item) {
+                            let rowdata = $('#jqxGrid').jqxGrid('getrowdata', item);
+                            
+                            data.push(rowdata);                            
+                        });
+                        $('#jqxGrid').jqxGrid('clearselection');
+
+                    }else{
+                        cmmAlert('항목을 선택해 주세요.');
+                    }
+                    return data;
+                    
+                },
+
+                // 즐겨찾기 등록
+                addFavorites:function(){
+
+                    let _this = this;
+                    let data = _this.selectedRow();
+
+                    if(data.length > 0){
+                        cmmConfirm(data.length + '개 고객사의 즐겨찾기를 등록 하시겠습니까?', function() {
+                            // 즐겨찾기 등록(post)
+                            axiosCall('post', '/cus/api/cusFavoritesIns', data, function(response) {
+                                cmmAlert(response.data);
+                                _this.drawGrid();
+                            });
+                        });
+                        
+                    }
+                },
+
+                // 즐겨찾기 해제(delete)
+                delFavorites:function(){
+
+                    let _this = this;
+                    let idxs = $('#jqxGrid').jqxGrid('getselectedrowindexes');
+
+                    let data = [];
+
+                    if(idxs.length > 0) {
+
+                        cmmConfirm(idxs.length + '개 고객사의 즐겨찾기를 해제 하시겠습니까?', function() {
+
+                            let rowIDs = new Array();
+                            let updateChk = false;
+                            
+                            $(idxs).each(function(index, item) {
+                                let rowdata = $('#jqxGrid').jqxGrid('getrowdata', item);
+
+                                if(rowdata.book_seq > 0){
+                                    data.push(rowdata.book_seq);
+                                }                            
+                            });
+
+                            if(data.length > 0){
+
+                                let bookSeqList = '';
+
+                                $('#jqxGrid').jqxGrid('clearselection');
+                                
+                                $(data).each(function(index, item) {                                
+                                    if(index == 0){
+                                        bookSeqList += item;
+                                    }else{
+                                        bookSeqList += "," + item;
+                                    }
+                                });
+
+                                axiosCall('delete', '/cus/api/cusFavoritesDel', {book_seq : bookSeqList}, function(response) { 
+                                    cmmAlert(response.data);
+                                    _this.drawGrid();
+                                });
+                                
+
+                            }else{
+                                cmmAlert('선택한 항목중에 즐겨찾기 설정된 항목기 없습니다.');
+                            }
+                        });
+
+                    }else{
+                        cmmAlert('항목을 선택해 주세요.');
+                    }
+                },
+                onMaskBizNoTxt: function(companyNum){
+                    companyNum = companyNum.replace(/[^0-9]/g, '');
+                    var tempNum = '';   
+
+                    if(companyNum.length < 4){
+                        return companyNum;
+                    }
+                    else if(companyNum.length < 6){
+                        tempNum += companyNum.substr(0,3);
+                        tempNum += '-';
+                        tempNum += companyNum.substr(3,2);
+                        return tempNum;
+                    }
+                    else if(companyNum.length < 11){
+                        tempNum += companyNum.substr(0,3);
+                        tempNum += '-';
+                        tempNum += companyNum.substr(3,2);
+                        tempNum += '-';
+                        tempNum += companyNum.substr(5);
+                        return tempNum;
+                    }
+                    else{        
+                        tempNum += companyNum.substr(0,3);
+                        tempNum += '-';
+                        tempNum += companyNum.substr(3,2);
+                        tempNum += '-';
+                        tempNum += companyNum.substr(5);
+                        return tempNum;
+                    }
+                },
+
+                onMaskBizNo: function(e){
+                    let _this = this;
+                    e.target.value = _this.onMaskBizNoTxt(e.target.value);
+                },
+
+                // 고객사 정보 저장
+                uptCusInfo: function(){
+
+                    let _this = this;
+
+                    if(!_this.bCertification){
+                        cmmAlert('고객 코드 인증이 필요합니다.');
+                        return;
+                    }
+                    
+                    // 등록 정보 확인
+                    if(_this.selCusInfo.cst_tp_cd.trim() === ''){
+                        cmmAlert('고객사 유형을 입력해 주세요.');                        
+                        return false;
+                    }
+
+                    if(_this.selCusInfo.cst_nm.trim() === ''){
+                        cmmAlert('고객사명을 입력해 주세요.');
+                        _this.$refs.cst_nm.focus();
+                        return false;
+                    }
+
+                    if(_this.selCusInfo.cst_email.trim() !== '' && !emailCheck(_this.selCusInfo.cst_email)){
+                        cmmAlert('이메일 형식이 정확하지 않습니다.\n예시) ex@cesco.co.kr');
+                        _this.$refs.cst_email.focus();
+                        return false;
+                    }
+
+                    // 고객사 정보 등록_수정                    
+                    let setConfirmMsg = "등록";
+                    let axiosUrl = '/cus/api/cusInfoIns';
+                    let axiosMethod = 'post';
+
+                    if(_this.chkCusUpt){
+                        setConfirmMsg = "수정";
+                        axiosUrl = "/cus/api/cusInfoUpt";
+                        axiosMethod = 'put';                        
+                    }
+
+                    cmmConfirm("고객사 정보를 " + setConfirmMsg + " 하시겠습니까?", function() {
+                        axiosCall(axiosMethod, axiosUrl, _this.selCusInfo, function(response) {
+                            cmmAlert(response.data);
+
+                            _this.drawGrid();
+                            _this.insCusInfo();
+                        });
+                    });
+
+                  
+                },
+                onDownloadXls: function(){
+                    $("#jqxGridAll").jqxGrid('exportdata', 'xls', '고객사관리 목록', true);
+                },
+
+                // 그리드 내용 가운데 
+                setDivCenter: function(val, tag){
+                    let inTag = "height:100%;";
+                    inTag += "display:flex;";
+                    inTag += "flex-direction:column;";
+                    inTag += "justify-content:center;";
+                    inTag += "align-items:center;";
+                    inTag += "word-break:break-all;";
+                    inTag += tag;
+
+                    return "<div style='" + inTag + "'>" + val + "</div>";
+                },
+
+                // 고객사 목록(get)
+                drawGrid: function() {
+
+                    let _this = this;
+
+                    _this.insCusInfo();
+
+                    let param = { 
+                        cst_id : _this.search_cst_id,
+                        cst_nm : _this.search_cst_nm,
+                        cst_biz_no : _this.search_cst_biz_no,
+                        status : _this.search_status
+                    };
+
+                    // 코드 목록 가져오기
+                    axiosCall('get', '/cus/api/cusList', param, function(response) {
+
+                        // HTML 파일에 div의 id로 입력해놓은 jqxgrid에 dataAdapter의 정보를  
+                        // grid 형태로 출력한다.
+                        let commCodeAdapter = []
+
+                        let useViewValue = [
+                            { value : "Y", label : "정상"},
+                            { value : "N", label : "거래중단"}
+                        ];
+                        
+                        let commCodeSource = {
+                            datatype: "array",
+                            datafields: [
+                                { name: 'label', type: 'string' },
+                                { name: 'value', type: 'string' }
+                            ],
+                            localdata: useViewValue
+                        };
+                        
+                        
+
+                        commCodeAdapter.push(new $.jqx.dataAdapter(commCodeSource, {autoBind: true})); 
+
+                        let cusTypeListSource = {
+                            datatype: "array",
+                            datafields: [
+                                { name: 'cmm_dtl_cd', type: 'string' },
+                                { name: 'cmm_dtl_nm', type: 'string' }
+                            ],
+                            localdata: _this.cusTypeList
+                        };
+
+                        commCodeAdapter.push(new $.jqx.dataAdapter(cusTypeListSource, {autoBind: true}));   // [1] : 사용자구분
+
+                        let data = response.data;
+                                                
+                        // 데이터 타입, 필드, 셋팅할 데이터를 설정한다.  
+                        let source =  {  
+                            datatype: "json", // json 형태의 데이터를 셋팅할 것이고.  
+
+                            // 각필드의 이름과 타입은 datafields에 마찬가지로 json 형태이다.  
+                            datafields: [
+                                { name : 'sys_id',          type : 'string'},
+                                { name : 'cst_id',          type : 'string'},   // 고객 ID
+                                { name : 'cst_nm',          type : 'string'},   // 고객명
+                                { name : 'cst_tp_cd',       type : 'string'},   // 고객구분 FS008
+                                { name : 'cst_mng_biz',     type : 'string'},   // 종사업자번호
+                                { name : 'cst_biz_no',      type : 'string'},   // 사업자번호
+                                { name : 'cst_tel_no',      type : 'string'},   // 전화번호
+                                { name : 'cst_fax_no',      type : 'string'},   // 팩스
+                                { name : 'cst_email',       type : 'string'},   // 이메일
+                                { name : 'cst_sys_id',      type : 'string'},   // ERP 고객번호
+                                { name : 'status',          type : 'string'},   // 상태
+                                { name : 'rgstr_id',        type : 'string'},   // 등록자ID
+                                { name : 'rgstr_nm',        type : 'string'},   // 등록자명
+                                { name : 'rgstr_dt',        type : 'string'},   // 등록일
+                                { name : 'mdfr_id',         type : 'string'},   // 수정자ID
+                                { name : 'mdfr_nm',         type : 'string'},   // 수정자명
+                                { name : 'mdfr_dt',         type : 'string'},   // 수정일
+                                { name : 'ssmm',            type : 'string'},                                
+                                { name : 'book_seq',        type : 'int'},      // 즐겨찾기 번호
+
+                                // 공통 코드 관련 추가
+                                { name: 'use_view', value: 'status', values: { source: commCodeAdapter[0].records, value: 'value', name: 'label' } },
+                                { name: 'cst_tp_cd_view', value: 'cst_tp_cd', values: { source: commCodeAdapter[1].records, value: 'cmm_dtl_cd', name: 'cmm_dtl_nm' } }
+                            ],                            
+
+                            localdata: data // 위에서 셋팅해놓은 data를 localdata에 담아준다.  
+                        };
+
+                        // jqxgrid 프레임워크에서 만든 dataAdapter object를 생성하여  
+                        // 위에서 셋팅한 source의 정보를 넣어준다.  
+                        let dataAdapter = new $.jqx.dataAdapter(source);
+
+                        $('#jqxGrid').jqxGrid('clearselection');
+
+                        //$('#jqxRGrid').jqxGrid('clear');
+                        $("#jqxGrid").jqxGrid({                             
+                            width               :   '100%',
+                            // autoheight          :   true,
+                            height				: 	720,               
+		                    // autorowheight		:	true,
+                            columnsheight		:	50,
+                            rowsheight		    :	48,
+                            source              :   dataAdapter,
+                            selectionmode       :   'singlerow',
+                            pageable			:   true,
+                            pagermode			:   'simple',
+                            pagesize			:   13,
+                            pagerbuttonscount	:   10,
+                            localization        : { emptydatastring:'해당 자료가 존재하지 않습니다.' },
+                            columns: [
+                                    {
+                                        text: '순번', sortable: false, filterable: false, editable: false,
+                                        groupable: false, draggable: false, resizable: false,
+                                        datafield: '', columntype: 'number', width: '5.5%',  cellsalign: 'center', align : 'center',
+                                        cellsrenderer: function (row, column, value) {
+                                            return _this.setDivCenter((value + 1));
+                                            //return "<div style='margin-top:8px;'>" + (value + 1) + "</div>";
+                                        }
+                                    },
+                                    { text : '고객사명',          cellsalign: 'center', align : 'center', datafield : 'cst_nm', width : '33.5%'},
+                                    // { text : '고객코드',        cellsalign: 'center', align : 'center', datafield : 'cst_id', width : '12%'},                                    
+                                    { 
+                                        text : '사업자등록번호',  cellsalign: 'center', align : 'center', datafield : 'cst_biz_no', width : '17%',
+                                        cellsrenderer: function (row, column, value) {
+                                            // return "<div style='margin-top:8px;'>" + _this.onMaskBizNoTxt(value) + "</div>" ;
+                                            return _this.setDivCenter(_this.onMaskBizNoTxt(value));
+                                        }
+                                    },
+                                    { 
+                                        text : '종사업자번호',    cellsalign: 'center', align : 'center', datafield : 'cst_mng_biz', width : '17%',
+                                        cellsrenderer: function (row, column, value) {
+                                            // return "<div style='margin-top:8px;'>" + _this.onMaskBizNoTxt(value) + "</div>";
+                                            return _this.setDivCenter(_this.onMaskBizNoTxt(value));
+                                        }
+                                    },
+                                    { text : 'ERP고객번호',     cellsalign: 'center', align : 'center', datafield : 'cst_sys_id', width : '17%'},
+                                    // { 
+                                    //     text : '즐거찾기',        cellsalign: 'center', align : 'center', datafield : 'book_seq', width : '10%',
+                                    //     cellsrenderer: function (row, column, value) {
+                                    //         let returnVal = value == 0 ? "N" : "Y";
+                                    //         return "<div style='margin-top:10px;'>" + returnVal + "</div>";
+                                    //     }
+                                    // },
+                                    {
+                                        text: '상태', cellsalign: 'center', align : 'center', datafield: 'status', displayfield: 'use_view', width: '10%', columntype: 'combobox',
+                                        createeditor: function (row, value, editor) {
+                                            editor.jqxComboBox({ source: commCodeAdapter[0], displayMember: 'label', valueMember: 'value' });
+                                        }
+                                    }
+                            ]
+                        });
+
+                        // 셀 클릭 이벤트
+                        $("#jqxGrid").off('cellclick').on('cellclick', function (event) {
+                            // event arguments.
+                            var args = event.args;
+                            // row's data.
+                            var rowData = args.row.bounddata;
+                            // column data field.
+                            var dataField = event.args.datafield;                            
+
+                            if(dataField !== '_checkboxcolumn' && dataField !== ''){
+                                _this.selCusInfo.sys_id         = rowData.sys_id;
+                                _this.selCusInfo.cst_id         = rowData.cst_id;
+                                _this.selCusInfo.cst_nm         = rowData.cst_nm;
+                                _this.selCusInfo.cst_tp_cd      = rowData.cst_tp_cd;
+                                _this.selCusInfo.cst_mng_biz    = _this.onMaskBizNoTxt(rowData.cst_mng_biz);
+                                _this.selCusInfo.cst_biz_no     = _this.onMaskBizNoTxt(rowData.cst_biz_no);
+                                _this.selCusInfo.cst_tel_no     = rowData.cst_tel_no;
+                                _this.selCusInfo.cst_fax_no     = rowData.cst_fax_no;
+                                _this.selCusInfo.cst_email      = rowData.cst_email;
+                                _this.selCusInfo.cst_sys_id     = rowData.cst_sys_id;
+                                _this.selCusInfo.status         = rowData.status;
+                                _this.selCusInfo.rgstr_id       = rowData.rgstr_id;
+                                _this.selCusInfo.rgstr_nm       = rowData.rgstr_nm;
+                                _this.selCusInfo.rgstr_dt       = rowData.rgstr_dt;
+                                _this.selCusInfo.mdfr_id        = rowData.mdfr_id;
+                                _this.selCusInfo.mdfr_nm        = rowData.mdfr_nm;
+                                _this.selCusInfo.mdfr_dt        = rowData.mdfr_dt;
+                                _this.selCusInfo.ssmm           = rowData.ssmm;
+
+                                _this.chkCusUpt = true;
+                                _this.bCertification = true;
+                            }
+                        });
+
+
+                        $('#jqxGridAll').jqxGrid('clearselection');
+
+                        $("#jqxGridAll").jqxGrid({                             
+                            width               :   '100%',                            
+                            height				: 	0,                            
+                            source              :   dataAdapter,                            
+                            localization        : { emptydatastring:'해당 자료가 존재하지 않습니다.' },
+                            columns: [
+                                    { text : '고객사명',          cellsalign: 'center', align : 'center', datafield : 'cst_nm', width : '250'},                                   
+                                    { text : '사업자등록번호',  cellsalign: 'center', align : 'center', datafield : 'cst_biz_no', width : '150'},
+                                    { text : '종사업자번호',    cellsalign: 'center', align : 'center', datafield : 'cst_mng_biz', width : '150'},
+                                    { text : 'ERP고객번호',     cellsalign: 'center', align : 'center', datafield : 'cst_sys_id', width : '150'},
+
+                                    { 
+                                        text : '고객사유형',     cellsalign: 'center', align : 'center', datafield: 'cst_tp_cd', displayfield: 'cst_tp_cd_view', width: '150', columntype: 'combobox'
+                                        ,createeditor: function (row, value, editor) {
+                                            editor.jqxComboBox({ source: commCodeAdapter[1], displayMember: 'cmm_dtl_nm', valueMember: 'cmm_dtl_cd' });
+                                        }
+                                    },
+                                    { text : '전화번호',     cellsalign: 'center', align : 'center', datafield : 'cst_tel_no', width : '150'},
+                                    { text : 'FAX',     cellsalign: 'center', align : 'center', datafield : 'cst_fax_no', width : '150'},
+                                    { text : '이메일',     cellsalign: 'center', align : 'center', datafield : 'cst_email', width : '150'},
+
+                                    {
+                                        text: '상태', cellsalign: 'center', align : 'center', datafield: 'status', displayfield: 'use_view', width: '150', columntype: 'combobox',
+                                        createeditor: function (row, value, editor) {
+                                            editor.jqxComboBox({ source: commCodeAdapter[0], displayMember: 'label', valueMember: 'value' });
+                                        }
+                                    },
+
+                                    { text : '등록자',     cellsalign: 'center', align : 'center', datafield : 'rgstr_nm', width : '150'},
+                                    { text : '등록일시',     cellsalign: 'center', align : 'center', datafield : 'rgstr_dt', width : '150'},
+                                    { text : '수정자',     cellsalign: 'center', align : 'center', datafield : 'mdfr_nm', width : '150'},
+                                    { text : '수정일시',     cellsalign: 'center', align : 'center', datafield : 'mdfr_dt', width : '150'},
+
+
+                            ]
+                        });
+                    });                    
+                }
+            }
+        });
+    });
+</script>
+
+</head>
+<body>
+    <section layout:fragment="content" id="app"  v-cloak>
+        <div class="page-content">
+            <div class="page-box">
+                <div class="clear">
+                    <h2 class="page-title fl">고객사 관리</h2>
+                    <div class="fr">
+                        <button class="btn-search" @click="drawGrid"><i></i>조회</button>
+                    </div>
+                </div>
+                <hr>
+                <div class="board-search mgt20">
+                    <table>
+                        <colgroup>
+                            <col width="80px"><col width="">
+                            <col width="110px"><col width="">
+                            <col width="110px"><col width="">
+                            <col width="110px"><col width="">                            
+                        </colgroup>
+                        <tbody>
+                            <tr>
+                                <th>고객사코드</th>
+                                <td><input type="text" class="full" v-model="search_cst_id" @keyup.enter="drawGrid" placeholder="고객사코드를 입력하세요"></td>
+                                <th>고객사</th>
+                                <td><input type="text" class="full" v-model="search_cst_nm" @keyup.enter="drawGrid" placeholder="고객사명을 입력하세요"></td>
+                                <th>사업자 등록번호</th>
+                                <td><input type="text" class="full" v-model="search_cst_biz_no" @keyup.enter="drawGrid" placeholder="사업자 등록번호 입력하세요"></td>
+                                <th>거래상태</th>
+                                <td>
+                                    <select class="full" v-model="search_status">
+                                        <option value="">전체</option>
+                                        <option value="Y">정상</option>
+                                        <option value="N">거래중단</option>
+                                    </select>
+                                </td>                                
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="page-box clear">
+                <div class="clear">
+                    <div class="fl"><h3 class="content-title">고객사</h3></div>
+                    <div class="fr">            
+                        <button class="btn-save" @click="onDownloadXls">엑셀다운로드</button>                      
+                        <button class="btn-save" @click="insCusInfo">고객사신규</button>
+                        <button class="btn-save" @click="uptCusInfo">고객사저장</button>
+                        <!-- <button class="btn-save" @click="addFavorites">즐겨찾기추가</button>
+                        <button class="btn-save" @click="delFavorites">즐겨찾기해제</button> -->
+                    </div>
+                </div>
+                <div class="column col2eq-last pdr10">
+                    <div id="jqxGridAll" style="border-color:#ffffff;">&nbsp;</div>
+                </div>
+                <div class="column col2eq-last pdr10">
+                    <div id="jqxGrid">&nbsp;</div>
+                </div>
+                <div class="column col2eq pdl10">
+                    <table class="tb-view-01">
+                        <colgroup><col width="150px"><col width=""></colgroup>
+                        <tbody>
+                            <!-- <tr>
+                                <th>시스템구분</th>
+                                <td>
+                                    <select class="full" v-model="selCusInfo.sys_id" :disabled="chkCusUpt === true" >
+                                        <option v-for="cate in sysCateList" :value="cate.cmm_dtl_cd">{{cate.cmm_dtl_nm}}</option>
+                                    </select>
+                                </td>
+                            </tr>                             -->
+                            <tr>
+                                <th>ERP고객코드</th>
+                                <td>
+                                    <div class="flex-auto-end">
+                                        <div><input type="text" v-model="selCusInfo.cst_sys_id" :readonly="bCertification" ref="cst_sys_id" maxlength="10" class="full" placeholder="ERP고객코드를 입력하세요"></div>
+                                        <div>
+                                            <button class="btn-tb mgl5" v-if="bCertification === false" @click="onCertification">인증</button>
+                                            <button class="btn-tb mgl5" v-if="bCertification === true && !chkCusUpt" @click="onResetCert">재인증</button>
+                                        </div>
+                                        
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>고객사명</th>
+                                <td><input type="text" v-model="selCusInfo.cst_nm" ref="cst_nm" class="full" maxlength="100" placeholder="고객사명을 입력하세요"></td>
+                            </tr>                            
+                            <tr>
+                                <th>사업자등록번호</th>
+                                <td><input type="text" v-model="selCusInfo.cst_biz_no" @keyup="onMaskBizNo($event)" ref="cst_biz_no" class="full" maxlength="12" placeholder="사업자등록번호를 입력하세요"></td>
+                            </tr>
+                            <!-- <tr>
+                                <th>종사업자번호</th>
+                                <td><input type="text" v-model="selCusInfo.cst_mng_biz" @keyup="onMaskBizNo($event)" ref="cst_mng_biz" class="full" maxlength="12" placeholder="종사업자등록번호를 입력하세요"></td>
+                            </tr> -->
+                            <tr>
+                                <th>고객사유형</th>
+                                <td>
+                                    <select class="full" v-model="selCusInfo.cst_tp_cd">                                    
+                                        <option v-for="custype in cusTypeList" :value="custype.cmm_dtl_cd">{{custype.cmm_dtl_nm}}</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <!-- <tr>
+                                <th>전화번호</th>
+                                <td><input type="text" v-model="selCusInfo.cst_tel_no" ref="cst_tel_no" class="full" maxlength="20" placeholder="전화번호를 입력하세요"></td>
+                            </tr>
+                            <tr>
+                                <th>FAX</th>
+                                <td><input type="text" v-model="selCusInfo.cst_fax_no" ref="cst_fax_no" class="full" maxlength="20" placeholder="FAX를 입력하세요"></td>
+                            </tr>
+                            <tr>
+                                <th>이메일</th>
+                                <td><input type="text" v-model="selCusInfo.cst_email" ref="cst_email" class="full" maxlength="100" placeholder="예시) ex@cesco.co.kr"></td>
+                            </tr> -->
+
+                            <!-- <tr>
+                                <th>담당자ID</th>
+                                <td>
+                                    <select class="full" v-model="selCusInfo.cst_id"><option>담당자ID</option></select>
+                                </td>
+                            </tr> -->
+                            <tr>
+                                <th>상태</th>
+                                <td>
+                                    <select class="full" v-model="selCusInfo.status">
+                                        <option value="Y">정상</option>
+                                        <option value="N">거래중단</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>등록자</th>
+                                <td><input type="text" v-model="selCusInfo.rgstr_nm" class="full" readonly></td>
+                            </tr>
+                            <tr>
+                                <th>등록일시</th>
+                                <td><input type="text" v-model="selCusInfo.rgstr_dt" class="full" readonly></td>
+                            </tr>
+                            <tr>
+                                <th>수정자</th>
+                                <td><input type="text" v-model="selCusInfo.mdfr_nm" class="full" readonly></td>
+                            </tr>
+                            <tr>
+                                <th>수정일시</th>
+                                <td><input type="text" v-model="selCusInfo.mdfr_dt" class="full" readonly></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</body>
+</html>

@@ -1,0 +1,175 @@
+@charset "utf-8";
+
+/*** Cesco ***/
+@font-face {
+	font-family: 'cesco';
+	font-style: normal;
+	font-weight: 400;
+	src: local('cesco_regular'), local('cesco_regular'),
+	url(cesco_regular.eot),
+	url(cesco_regular.eot?#iefix) format('embedded-opentype'),
+	url(cesco_regular.woff) format('woff'),
+	url(cesco_regular.otf) format('opentype');
+}
+@font-face {
+	font-family: 'cesco';
+	font-style: normal;
+	font-weight: 700;
+	src: local('cesco_bold'), local('cesco_bold'),
+	url(cesco_bold.eot),
+	url(cesco_bold.eot?#iefix) format('embedded-opentype'),
+	url(cesco_bold.woff) format('woff'),
+	url(cesco_bold.otf) format('opentype');
+}
+
+
+/*** Noto Sans ***/
+/*Thin*/
+@font-face {
+	font-family: 'Noto Sans Korean';
+	font-style: normal;
+	font-weight: 100;
+	src: local('Noto Sans Thin'), local('NotoSans-Thin'),
+	url(NotoSansKR-Thin.eot),
+	url(NotoSansKR-Thin.eot?#iefix) format('embedded-opentype'),
+	url(NotoSansKR-Thin.woff) format('woff'),
+	url(NotoSansKR-Thin.otf) format('opentype');
+}
+/*Light*/
+@font-face {
+	font-family: 'Noto Sans Korean';
+	font-style: normal;
+	font-weight: 200;
+	src: local('Noto Sans Light'), local('NotoSans-Light'),
+	url(NotoSansKR-Light.eot),
+	url(NotoSansKR-Light.eot?#iefix) format('embedded-opentype'),
+	url(NotoSansKR-Light.woff) format('woff'),
+	url(NotoSansKR-Light.otf) format('opentype');
+}
+/*DemiLight*/
+@font-face {
+	font-family: 'Noto Sans Korean';
+	font-style: normal;
+	font-weight: 300;
+	src: local('Noto Sans DemiLight'), local('NotoSans-DemiLight'),
+	url(NotoSansKR-DemiLight.eot),
+	url(NotoSansKR-DemiLight.eot?#iefix) format('embedded-opentype'),
+	url(NotoSansKR-DemiLight.woff) format('woff'),
+	url(NotoSansKR-DemiLight.otf) format('opentype');
+}
+/*Regular*/
+@font-face {
+	font-family: 'Noto Sans Korean';
+	font-style: normal;
+	font-weight: 400;
+	src: local('Noto Sans Regular'), local('NotoSans-Regular'),
+	url(NotoSansKR-Regular.eot),
+	url(NotoSansKR-Regular.eot?#iefix) format('embedded-opentype'),
+	url(NotoSansKR-Regular.woff) format('woff'),
+	url(NotoSansKR-Regular.otf) format('opentype');
+}
+/*Medium*/
+@font-face {
+	font-family: 'Noto Sans Korean';
+	font-style: normal;
+	font-weight: 500;
+	src: local('Noto Sans Medium'), local('NotoSans-Medium'),
+	url(NotoSansKR-Medium.eot),
+	url(NotoSansKR-Medium.eot?#iefix) format('embedded-opentype'),
+	url(NotoSansKR-Medium.woff) format('woff'),
+	url(NotoSansKR-Medium.otf) format('opentype');
+}
+/*Bold*/
+@font-face {
+	font-family: 'Noto Sans Korean';
+	font-style: normal;
+	font-weight: 700;
+	src: local('Noto Sans Bold'), local('NotoSans-Bold'),
+	url(NotoSansKR-Bold.eot),
+	url(NotoSansKR-Bold.eot?#iefix) format('embedded-opentype'),
+	url(NotoSansKR-Bold.woff) format('woff'),
+	url(NotoSansKR-Bold.otf) format('opentype');
+}
+
+
+/*** Roboto ***/
+/*Light*/
+@font-face {
+	font-family: 'Roboto';
+	font-style: normal;
+	font-weight: 200;
+	src: local('Roboto-Light'), local('Roboto-Light'),
+	url(Roboto-Light.eot),
+	url(Roboto-Light.eot?#iefix) format('embedded-opentype'),
+	url(Roboto-Light.woff) format('woff'),
+	url(Roboto-Light.otf) format('opentype'),
+	url(Roboto-Light.ttf) format('truetype');
+}
+/*Regular*/
+@font-face {
+	font-family: 'Roboto';
+	font-style: normal;
+	font-weight: 400;
+	src: local('Roboto'), local('Roboto'),
+	url(Roboto-Regular.eot),
+	url(Roboto-Regular.eot?#iefix) format('embedded-opentype'),
+	url(Roboto-Regular.woff) format('woff'),
+	url(Roboto-Regular.otf) format('opentype'),
+	url(Roboto-Regular.ttf) format('truetype');
+}
+/*Medium*/
+@font-face {
+	font-family: 'Roboto';
+	font-style: normal;
+	font-weight: 500;
+	src: local('Roboto-Medium'), local('Roboto-Medium'),
+	url(Roboto-Medium.eot),
+	url(Roboto-Medium.eot?#iefix) format('embedded-opentype'),
+	url(Roboto-Medium.woff) format('woff'),
+	url(Roboto-Medium.otf) format('opentype'),
+	url(Roboto-Medium.ttf) format('truetype');
+}
+/*Bold*/
+@font-face {
+	font-family: 'Roboto';
+	font-style: normal;
+	font-weight: 700;
+	src: local('Roboto'), local('Roboto-Bold'),
+	url(Roboto-Bold.eot),
+	url(Roboto-Bold.eot?#iefix) format('embedded-opentype'),
+	url(Roboto-Bold.woff) format('woff'),
+	url(Roboto-Bold.otf) format('opentype'),
+	url(Roboto-Bold.ttf) format('truetype');
+}
+
+/*Nanum Barun Gothic*/
+@font-face {
+	font-family: 'Nanum Barun Gothic';
+	font-style: normal;
+	font-weight: 300;
+	src: local('Nanum Barun Gothic Light'), local('Nanum Barun Gothic-Light'), local('NanumBarunGothic Light');
+	src: url(NanumBarunGothicLight.eot);
+	src: url(NanumBarunGothicLight.eot?#iefix) format('embedded-opentype'),
+		url(NanumBarunGothicLight.woff) format('woff'),
+		url(NanumBarunGothicLight.ttf) format('truetype');
+}
+@font-face {
+	font-family: 'Nanum Barun Gothic';
+	font-style: normal;
+	font-weight: 400;
+	src: local('Nanum Barun Gothic Regular'), local('Nanum Barun Gothic-Regular'), local('NanumBarunGothic Regular');
+	src: url(NanumBarunGothic.eot);
+	src: url(NanumBarunGothic.eot?#iefix) format('embedded-opentype'),
+		url(NanumBarunGothic.woff) format('woff'),
+		url(NanumBarunGothic.ttf) format('truetype');
+}
+@font-face {
+	font-family: 'Nanum Barun Gothic';
+	font-style: normal;
+	font-weight: 700;
+	src: local('Nanum Barun Gothic Bold'), local('Nanum Barun Gothic-Bold'), local('NanumBarunGothic Bold');
+	src: url(NanumBarunGothicBold.eot);
+	src: url(NanumBarunGothicBold.eot?#iefix) format('embedded-opentype'),
+		url(NanumBarunGothicBold.woff) format('woff'),
+		url(NanumBarunGothicBold.ttf) format('truetype');
+}

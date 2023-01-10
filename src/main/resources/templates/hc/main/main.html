@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/default}">
+<head>
+<title>세스코</title>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1 minimum-scale=1" />
+<script th:inline="javascript" type="text/javascript">
+ 
+var vue
+$(document).ready(function(){
+    
+    vue = new Vue({
+        el: '#app',
+        data: {
+                sys_id: 'HC',
+                noticeList: [],
+                familyList:[],
+        },
+        methods: {
+            // get main 목록
+            getMainList : function() {
+                let url = '/main/main_hc/hcmain';
+                let _this = this;
+                let msg = '';
+                let param = {};
+                param.sys_id = _this.sys_id;
+
+                axiosCall('get',url, param, function(res){
+                    _this.noticeList = res.data.noticeList;
+                }, msg);
+                
+            },
+            // 페이지 이동
+            movePage: function(idx, param) {
+                let url = '';
+
+                if(idx == '0') {
+                    url = '/notice/noticeList?';
+                } else if(idx == '1') {
+                    url = '/notice/noticeDetails?';
+                } else {
+                    alert('페이지 준비중입니다.');
+                    return;
+                }
+
+                // param data setting
+                let paramStr = "";
+                $.each(param, function(key, value){
+                    paramStr += (paramStr!=""? "&" : "") + key + "=" +  value;
+                });
+                
+                window.location = url + paramStr;
+            }
+        },
+        mounted: function(){
+            let _this = this;
+            _this.getMainList();
+            getCodeListForArrNm([{cmm_cd: 'FS026', arr_nm: 'familyList'}], _this, selectBoxToggle());
+        },
+    });
+})
+</script>
+</head>
+<body>
+    <section layout:fragment="content" id="app" v-cloak>
+        <div class="page-content hc" style="background-color:transparent;">
+            <section class="main-content">
+                <div class="list-select-box Family">
+                    <a href="#" class="btn-select"><span>Family Site</span>
+                    </a>
+                    <ul class="list-select">
+                        <li v-for="(item, index) in familyList" v-if="item.etc_cd2 == 'HC' && item.etc_cd4 != 'main'" :value="item.cmm_dtl_cd" >
+                            <a :href="item.etc_cd1" target="_blank"><span>{{item.cmm_dtl_nm}}</span></a>
+                        </li>
+                        <li v-for="(item, index) in familyList" v-if="item.etc_cd2 == 'HC' && item.etc_cd4 == 'main'" :value="item.cmm_dtl_cd" >
+                            <a :href="item.etc_cd1" target="_self"><span>{{item.cmm_dtl_nm}}</span></a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="main-visual">
+                    <!-- <img th:src="@{/images/common/img_main_hc.png}"/>  v-if="item.cmm_dtl_cd =! '07'"-->
+                    <div class="txt">
+                        <b>위생진단부터 HACCP 교육까지,<br>토탈 식품위생 관리가 필요하다면?</b>
+                        <p>고객이 믿고 먹을 수 있는 안전한 식품이 될 수 있도록<br>세스코가 먼저 믿고 먹는 세상을 열어갑니다.</p>
+                    </div>
+                </div>
+                <div class="main-board-wrap">
+                    <div>
+                        <ul class="hc-menu-wrap">
+                            <li>
+                                <a href="https://www.cescoacademy.co.kr" target="_blank">
+                                    <div>
+                                        <h4>식품안전교육<br><span>(HACCP, 위생용품 등)</span></h4>
+                                        <p>식약처 지정 HACCP 훈련기관(제10호)<br>및 위생용품 위생교육기관(제4호)</p>
+                                    </div>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="https://www.cesco.co.kr/solution/service/exam" target="_blank">
+                                    <div>
+                                        <h4>시험분석 서비스</h4>
+                                        <p>국내 최고 수준의 전문시험 검사서비스<br>식품/축산물/건강기능식품/위생용품 등</p>
+                                    </div>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="https://www.cesco.co.kr/solution/service/alien" target="_blank">
+                                    <div>
+                                        <h4>통합이물분석 서비스</h4>
+                                        <p>국내 유일, 이물전문 분석센터<br>30여가지 유형별 전문 분석 기법</p>
+                                    </div>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="https://mall.cesco.co.kr" target="_blank">
+                                    <div>
+                                        <h4>환경위생 솔루션 <span>(세스케어)</span></h4>
+                                        <p>케미컬 솔루션과 클리닝 솔루션<br>맞춤형 친환경 환경위생용품 브랜드</p>
+                                    </div>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="main-board-content">
+                        <div class="main-board-header" style="margin-bottom:2px;">
+                            <h3>공지사항</h3>
+                            <button class="btn-more-main" @click="movePage('0')">더보기</button>
+                        </div>
+                        <div class="main-grid mgt10">
+                            <!-- 메인화면에서는 아래 이미지와 같이 컬럼을 구성해주세요 . 
+                                1.header, paging 삭제
+                                2.불필요한 노출 컬럼 삭제(메인에서만)
+                                3.공지는 6개까지 노출
+                            -->
+                            <!-- 이미지 참고 필요시 확인 -->
+                            <!-- <img th:src="@{/images/temp/main_table3.png}" style="width:100%;"/> -->
+
+                            <div class="tb-list narrow notice">
+                                <ul class="tbody">
+                                    <li v-for="(item, index) in noticeList" :value="item.noti_seq">
+                                       <div class="num">{{index+1}}</div>
+                                       <div class="txt-l left">
+                                           <span v-if="item.type_cd == '01'" class="tag notice">{{item.type_nm}}</span>
+                                           <a href="#none" @click="movePage('1', {sys_id:item.sys_id, noti_seq:item.noti_seq, noti_no:index+1})">{{item.noti_title}}</a>
+                                       </div>
+                                       <div class="txt-l right">세스코</div>
+                                       <div class="txt-r right">{{item.start_date}}</div>
+                                   </li>
+                               </ul>
+                           </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </section>
+</body>
+</html>

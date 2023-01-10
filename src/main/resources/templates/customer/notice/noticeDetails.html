@@ -1,0 +1,295 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/default}">
+<head>
+<title>표시컨설팅</title>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1 minimum-scale=1" />
+<link rel="stylesheet"  th:href="@{/css/ckeditor.css}" />
+<script th:inline="javascript" type="text/javascript">
+var vue
+$(document).ready(function(){
+	vue = new Vue({
+		el: '#app',
+		data: {
+			userId:[[${session.userId}]],
+			userTpCd: [[${session.userTpCd}]],
+			sys_id:[[${noticeMgtDto.sys_id}]],
+			noti_seq: [[${noticeMgtDto.noti_seq}]],
+			srch_start_date: [[${noticeMgtDto.srch_start_date}]]== null ? '' : [[${noticeMgtDto.srch_start_date}]],     // 조회 시작일
+			srch_end_date: [[${noticeMgtDto.srch_end_date}]]== null ? '' : [[${noticeMgtDto.srch_end_date}]],         // 조회 종료일
+			srch_noti_title: [[${noticeMgtDto.srch_noti_title}]]== null ? '' : [[${noticeMgtDto.srch_noti_title}]],     // 조회 제목
+			prevBtn: false,
+			nextBtn: false,
+			contents: '',
+			charNum: 0,
+			fileDownCnt: 0,
+			attachList: [],
+			noticeInfo: {},
+			noticeAttachList: [],
+			notiAtchTotalSize: 0,
+			noticeDtlList: [],
+		},
+		methods: {
+			// get 공지사항 정보
+			getNoticeInfo: function() {
+				let url = '/api/notice/getNoticeInfo';
+				let _this = this;
+				let msg = '';
+				let param = {};
+
+				param.noti_sys_id = _this.sys_id;
+				param.noti_seq = _this.noti_seq;
+				param.srch_start_date = _this.srch_start_date;
+				param.srch_end_date = _this.srch_end_date;
+				param.srch_noti_title = _this.srch_noti_title;
+
+				axiosCall('get', url, param, function(res){
+					_this.noticeInfo = res.data.noticeDto;
+					_this.noticeAttachList = res.data.noticeAttachList;
+					_this.noticeDtlList = res.data.noticeDtlList;
+
+					// 이전 다음 버튼 제어
+					_this.prevBtn = _this.noticeInfo.prev_noti_seq == null || _this.noticeInfo.prev_noti_seq == '' ? true : false;
+					_this.nextBtn = _this.noticeInfo.next_noti_seq == null || _this.noticeInfo.next_noti_seq == '' ? true : false;
+
+					$.each(_this.noticeAttachList, function(i, v){
+						_this.notiAtchTotalSize += Number(v.atch_size); 
+						v.check = "";
+					});
+
+					// 댓글리스트
+					$.each(_this.noticeDtlList, function(idx, obj){
+						obj.contents = obj.contents.replaceAll('\n', '<br/>');
+						_this.noticeDtlList[idx] = obj;
+					});
+
+				}, msg);
+			},
+			// set 공지사항 조회 건수
+			setNoticeRead: function() {
+				let url = '/api/notice/setNoticeRead';
+				let _this = this;
+				let param = {};
+				param.sys_id = _this.sys_id;
+				param.noti_seq = _this.noti_seq;
+
+				axiosCall('post', url, param, function(res){
+					console.log('');
+				});
+			},
+			// 댓글리스트
+			getNoticeDtlList: function() {
+				let url = '/api/notice/getNoticeDtlList';
+				let _this = this;
+				let param = {};
+				param.sys_id = _this.sys_id;
+				param.noti_seq = _this.noti_seq;
+
+				axiosCall('get', url, param, function(res){
+					_this.noticeDtlList = res.data;
+
+					$.each(_this.noticeDtlList, function(idx, obj){
+						obj.contents = obj.contents.replaceAll('\n', '<br/>');
+						_this.noticeDtlList[idx] = obj;
+					});
+				});
+			},
+			// 댓글저장
+			setNoticeDtlInfo: function() {
+				let url = '/api/notice/setNoticeDtlInfo';
+				let _this = this;
+				let param = {};
+				param.sys_id = _this.sys_id;
+				param.noti_seq = _this.noti_seq;
+				param.contents = _this.contents;
+
+				axiosCall('post', url, param, function(res){
+					// 댓글 입력란 초기화
+					_this.contents = "";
+					_this.charNum = 0;
+					_this.getNoticeDtlList();
+				});
+
+			},
+			// 댓글 글자수
+			changeContents: function(e) {
+				this.contents = e.target.value;
+			},
+			// 전체 체크
+			fileAllCheck: function() {
+				$.each(this.noticeAttachList, function(idx, obj) {
+					obj.check = 'check';
+				});
+				this.$forceUpdate();
+			},
+			// pc저장
+			saveFilePc: function() {
+				let _this = this;
+				var cnt = 0;
+				var time = 4000; //4초
+
+				$.each(this.noticeAttachList, function(idx, obj) {
+					if(obj.check == 'check') {
+						_this.attachList.push(obj);
+
+						setTimeout(function() {
+							// $("#fileIdx" + idx).attr('href', '/api/filedownload/noti/' + obj.ser_file_nm);
+							// $("#fileIdx" + idx).trigger('click');
+
+							location.href = '/api/filedownload/noti/' + obj.ser_file_nm;
+						}, time * idx);
+
+					}
+				});
+
+				if(_this.attachList.length == 0) {
+					cmmAlert("체크된 파일이 없습니다.");
+					return false;
+				}
+
+			},
+			// 파일 다운로드
+			onDownload: function(e, filename) {
+				// if(e.target.className != 'ico' && e.target.checked) {
+				if(!$(e.target).prevAll('input')[0].checked) {
+					if(filename != undefined && filename != '') {
+						
+						location.href = '/api/filedownload/noti/' + filename;
+					}
+				}
+			},
+			// 페이지 이동
+            movePage: function(idx, param) {
+				let _this = this;
+				let url = '';
+				let paramStr = "";
+
+                if(idx == '0') {
+                    url = '/notice/noticeList?';
+
+                } else if(idx == '1') {
+                    url = '/notice/noticeDetails?';
+					paramStr = "srch_start_date=" + _this.srch_start_date 
+					         + '&srch_end_date=' + _this.srch_end_date 
+							 + '&srch_noti_title=' + _this.srch_noti_title;
+
+                } else {
+					cmmAlert('페이지 준비중입니다.');
+                    return;
+                }
+
+                // param data setting
+                $.each(param, function(key, value){
+                    paramStr += (paramStr!=""? "&" : "") + key + "=" +  value;
+                });
+                
+                window.location = url + paramStr;
+            },
+		},
+		mounted: function() {
+			this.getNoticeInfo();
+			this.setNoticeRead();
+		},
+	})
+});
+</script>
+
+</head>
+<body>
+	<section layout:fragment="content" id="app"  v-cloak>
+		<div class="page-head">
+			<!-- content -->
+			<div class="page-content">
+				<div class="page-box">
+					<div class="clear">
+						<h2 class="page-title fl">공지사항</h2>
+						<div class="fr">
+							<button class="btn-list" 
+								:disabled="prevBtn" 
+								:style="prevBtn ? 'cursor: default; background-color: #aaa;' : ''" 
+								@click="movePage('1', {sys_id:noticeInfo.prev_sys_id, noti_seq:noticeInfo.prev_noti_seq})">
+								<i class="prev"></i>이전
+							</button>
+							<button 
+								class="btn-list" 
+								:disabled="nextBtn" 
+								:style="nextBtn ? 'cursor: default; background-color: #aaa;' : ''" 
+								@click="movePage('1', {sys_id:noticeInfo.next_sys_id, noti_seq:noticeInfo.next_noti_seq})">
+								<i class="next"></i>다음
+							</button>
+							<button class="btn-list" @click="movePage('0')"><i></i>목록</button>
+						</div>
+					</div>
+					<div>
+						<table class="tb-view-01">
+							<colgroup><col width="10%"><col width=""></colgroup>
+							<tbody>
+								<tr>
+									<th>제목</th>
+									<td><span class="tag mini">{{noticeInfo.rownum}}</span>{{noticeInfo.noti_title}}</td>
+								</tr>
+								<tr>
+									<th>게시자</th>
+									<td>{{noticeInfo.assign_nm}}</td>
+								</tr>
+								<tr>
+									<th>게시기간</th>
+									<td>{{noticeInfo.start_date}} ~ {{noticeInfo.complete_date == '99991231' ? '영구' : noticeInfo.complete_date}}</td>
+								</tr>
+								<tr>
+									<th>첨부파일</th>
+									<td>
+										<div class="file-list-wrap">
+											<div class="file-info">
+												<span>첨부파일 {{noticeAttachList.length}}개({{notiAtchTotalSize}}MB)</span>
+												<button @click="fileAllCheck">전체선택</button>
+												<button @click="saveFilePc">PC저장</button>
+											</div>
+											<ul class="file-list">
+												<li v-for="(item, idx) in noticeAttachList">
+													<a href="#">
+														<label class="check">
+															<input type="checkbox" v-model="noticeAttachList[idx].check" true-value="check" false-value="">
+															<span class="ico"></span>
+															<span class="txt a-line" @click="onDownload($event, item.ser_file_nm)">{{item.atch_nm}} ({{(item.atch_size/Math.pow(1024,2)).toFixed(2)}}MB)</span>
+															<!-- <span class="txt a-line">{{item.atch_nm}} ({{(item.atch_size/Math.pow(1024,2)).toFixed(2)}}MB)</span> -->
+														</label>
+													</a>
+												</li>
+											</ul>
+										</div>
+									</td>
+								</tr>
+								<tr>
+									<th>내용</th>
+									<td height="200" v-html="noticeInfo.noti_contents" class="noti_content"></td>
+								</tr>
+								<tr>
+									<th>의견</th>
+									<td>
+										<textarea maxlength="2000" cols="30" rows="10" class="full" id="contents" v-model="contents" @input="changeContents"></textarea>
+										<div class="clear mgt5">
+											<div class="fl"><span>{{contents.length}}</span>/2000</div>
+											<div class="fr"><button class="btn-base" @click="setNoticeDtlInfo">댓글입력</button></div>    
+										</div>
+									</td>
+								</tr>
+								<tr v-for="item in noticeDtlList">
+									<th>의견</th>
+									<td class="tb-view-comment">
+										<span class="user">{{item.noti_rep_nm}}</span><span class="date">{{item.mdfr_dt}}</span>
+										<p v-html="item.contents"></p>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+			<!-- //content -->
+		</div>
+	</section>	    
+</div>
+</body>
+</html>

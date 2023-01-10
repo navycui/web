@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<title>표시컨설팅</title>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<link rel="stylesheet" href="../../../static/css/import.css"/>
+<script type="text/javascript" src="../../../static/js/jquery-1.10.1.min.js"></script>
+<script type="text/javascript" src="../../../static/js/jquery-ui.min.js"></script>
+<script type="text/javascript" src="../../../static/js/common.js"></script>
+<script>
+    $(document).ready(function(){
+        // list select toggle 
+        var delay = 200;
+
+        $('.list-select-box .btn-select').on('click', function(e) {
+            e.preventDefault();
+            $('.list-select-box').find('.list-select').stop().slideUp(delay, function() {
+                $(this).parent().removeClass('on');
+            });
+            //$(this).parent().toggleClass('on');
+            $(this).siblings().stop().slideToggle(delay);
+        });
+
+        // list select 메뉴들 클릭 시 select 닫기
+        $('.list-select-box .list-select a').on('click', function() {
+            $(this).parents('.list-select').stop().slideUp(delay);
+            $(this).parents('.list-select-box').removeClass('on');
+        });
+
+        // list select 바깥 클릭시 닫기
+        $(document).on('click', function(e) {
+            if($('.list-select-box').has(e.target).length === 0){
+                $('.list-select-box').find('.list-select').stop().slideUp(delay);
+                $('.list-select-box').removeClass('on');
+            }
+        });
+    });
+</script>
+</head>
+<body>
+<div class="wrap">
+	<div class="wrapInner">
+		<div id="container" class="container">
+			<div id="content" class="content">
+                <h2 class="login-title ver2"><span>가제.컨설팅 시스템</span></h2><!--표시컨설팅&HACCP 타이틀 확정 후 수정 예정-->
+                <!-- content -->
+				<div class="page-content">
+                    <div class="page-terms">
+                        <h3 class="title">
+                            <span>약관 타이틀</span>
+                        </h3>
+                        <button class="btn-search btn-terms">메인으로</button>
+                        
+                        <!-- 약관 히스토리 필요없을 경우 삭제 -->
+                        <div class="terms-date-wrap">
+                            <div class="list-select-box terms">
+                                <a href="#" class="btn-select"><span>개인정보 처리방침 (2022.10.17~현재)</span></a>
+                                <ul class="list-select">  
+                                    <li><a href=""><span>개인정보 처리방침 (2022.10.17~현재)</span></a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <!-- 약관 히스토리 필요없을 경우 삭제 끝.-->
+                        <div class="terms-content">
+                            약관 내용
+                        </div>
+                    </div>
+				</div>
+				<!-- //content -->
+			</div>
+		</div>
+	</div>
+</div>
+</body>
+</html>

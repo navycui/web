@@ -1,0 +1,59 @@
+.noti_content html, .noti_content body, .noti_content div, .noti_content span,
+.noti_content h1, .noti_content h2, .noti_content h3, .noti_content h4, .noti_content h5, .noti_content h6, .noti_content p, .noti_content blockquote, .noti_content pre,
+.noti_content a,
+.noti_content del, .noti_content dfn, .noti_content em, .noti_content img, 
+.noti_content small, .noti_content strike, .noti_content strong, .noti_content sub, .noti_content sup, 
+.noti_content b, .noti_content u, .noti_content i, 
+.noti_content dl, .noti_content dt, .noti_content dd, .noti_content ol, .noti_content ul, .noti_content li,
+.noti_content table, .noti_content caption, .noti_content tbody, .noti_content tfoot, .noti_content thead, .noti_content tr, .noti_content th, .noti_content td,
+.noti_content time, .noti_content mark, .noti_content audio, .noti_content video, .noti_content input, .noti_content select, .noti_content textarea, .noti_content button {
+    font-family:'Nanum Barun Gothic', '맑은 고딕', 'Malgun Gothic','Noto Sans Korean', 'cesco', verdana;box-sizing:border-box;
+    font-weight: revert;
+    font-size: revert;
+    line-height: 150%;
+    margin: revert;
+    padding: revert;
+    margin:0;
+    padding:0;
+    border:0;
+}
+.noti_content h1{font-size: 25px;}
+.noti_content h2{font-size: 22px;}
+.noti_content h3{font-size: 19px;}
+.noti_content h4{font-size: 16px;}
+.noti_content h5{font-size: 14px;}
+.noti_content h6{font-size: 12px;}
+
+/* editor 높이 고정 */
+.ck-editor__editable {
+    min-height: 350px;
+}
+
+/* 테이블 */
+.noti_content table {
+    height: inherit;
+}
+
+.noti_content table, .noti_content caption, .noti_content tbody, .noti_content tfoot, .noti_content thead, .noti_content tr, .noti_content th, .noti_content td {
+    margin:revert;
+    padding:revert;
+    border:0;
+    text-align: initial;
+}
+
+.noti_content dl, .noti_content ol, .noti_content ul, .noti_content li {
+    list-style: revert;
+    list-style-position: inside;
+}
+
+/* link */
+.ck-body-wrapper {
+    position: fixed;
+    z-index: 2000;
+}
+
+/* link a */
+.noti_content a {
+    text-decoration: underline;
+    color: blue;
+}
