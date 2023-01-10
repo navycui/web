@@ -157,3 +157,16 @@ public class SecurityConfiguration {
     //     web.ignoring().antMatchers(AUTH_WHITELIST);
     // }
 }
+// -- admin.`member` definition
+
+// CREATE TABLE `member` (
+//   `id` int NOT NULL AUTO_INCREMENT COMMENT '사용자번호',
+//   `email` varchar(255) NOT NULL COMMENT '아이디',
+//   `pwd` varchar(256) DEFAULT NULL COMMENT '비밀번호',
+//   `last_login_time` varchar(255) NOT NULL COMMENT '사용자명',
+//   `user_auth` varchar(255) NOT NULL COMMENT '권한',
+//   `register_time` datetime DEFAULT NULL COMMENT '추가날짜',
+//   `update_time` datetime DEFAULT NULL COMMENT '수정날짜',
+//   PRIMARY KEY (`id`) USING BTREE,
+//   UNIQUE KEY `email` (`email`) USING BTREE
+// ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8;
