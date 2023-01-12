@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.cesco.sys.comm.mapper.CommMapper">
+
+    <!-- 사용자 조회 이메일-->
+    <select id="findByEmail" resultType="com.demo.app.member.User" parameterType="string">
+        <![CDATA[
+            SELECT 
+                USER_ID,            -- 사용자ID
+                USER_NM,            -- 사용자명
+                CST_ID,             -- 회사코드
+                CST_NM,             -- 회사명
+                USER_TP_CD,         -- 사용자구분 01 고객 02 운영자 03 관리자 
+                USER_REF_ID,        -- 사용자연결코드
+                PWD,                -- 암호
+                PWD_CHG_DT,         -- 암호변경일자
+                EMAIL,              -- 이메일
+                TEL_NO,             -- 전화번호
+                MPHONE_NO,          -- 핸드폰
+                FAX_NO,             -- 팩스
+                ZIP_CD,             -- 우편번호
+                BAS_ADDR,           -- 기본주소
+                DTL_ADDR,           -- 상세주소
+                CST_TP_CD,          -- 고객구분01원청02협력사
+                USER_POSIT_NM,      -- 사용자직위명
+                CASE WHEN CST_TP_CD = '03' THEN  CST_NM + '(' + [dbo].FN_FS_GETSNAME1('9',USER_REF_ID) + ') - ' + [dbo].FN_FS_GETSNAME3('1', 'FS', 'FS012', USER_TP_CD)
+                ELSE  CST_NM + '(' + USER_DEPT_NM + ') - ' + [dbo].FN_FS_GETSNAME3('1', 'FS', 'FS012', USER_TP_CD)  END USER_DEPT_NM ,   -- 사용자부서명
+                STATUS,             -- 상태
+                RGSTR_DT,
+                RGSTR_ID,	     	-- 등록자
+                MDFR_DT,
+                MDFR_ID,		 	-- 수정자
+                SYS_ID,	 	 
+                PWD_INIT_YN, 	 	-- 비밀번호 초기화 여
+                NOTICE1_YN,		 	-- 신규의뢰시 알림
+                NOTICE2_YN,		 	-- 멘션 알림
+                NOTICE3_YN,		 	-- 참여컨설팅 알림
+                NOTICE4_YN,		 	-- 견젹서 및 입금확인  알림
+                ISNULL([dbo].FN_FS_GETSNAME1('14',USER_ID) ,'') AS DEPT_DIV,
+                ISNULL([dbo].FN_FS_GETSNAME1('15',CST_ID) ,'') AS CST_STATUS,  -- 거래중단여부
+                ADMIN_YN
+            FROM [CESCOFS].[dbo].[TB_FS_USER]
+            WHERE EMAIL = #{email}
+        ]]>
+
+    </select>
+
+
+</mapper>
